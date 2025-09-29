@@ -1,4 +1,5 @@
 from llama_index.core.workflow import StartEvent, StopEvent
+from .models import Resume
 
 
 class CVStartEvent(StartEvent):
@@ -6,4 +7,4 @@ class CVStartEvent(StartEvent):
 
 
 class CVStopEvent(StopEvent):
-    resume: str
+    resume: Resume
