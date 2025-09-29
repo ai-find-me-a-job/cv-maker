@@ -10,4 +10,6 @@ wheels/
 .venv
 .env
 .storage
+.tests.py
 data/files
+output/

@@ -2,27 +2,74 @@ from llama_index.core.workflow import Workflow, step
 from .custom_events import (
     CVStartEvent,
     CVStopEvent,
+    CVGenerateResumeEvent,
     CVGenerateLatexEvent,
     CVGeneratePDFEvent,
 )
 from llama_index.llms.google_genai import GoogleGenAI
-from src.config import GOOGLE_API_KEY
+from src.config import (
+    GOOGLE_API_KEY,
+    SCRAPPING_PAGE_CONTENT_LIMIT,
+    GEMINI_TEMPERATURE,
+    GEMINI_MODEL,
+)
 from src.core.index_manager import VectorIndexManager
 from src.logger import default_logger
 from .models import Resume
 from .latex_generator import LaTeXGenerator
+from .web_scraper import scrape_job_url
 import datetime
 
 
 class CVWorkflow(Workflow):
-    llm = GoogleGenAI(model="gemini-2.0-flash", api_key=GOOGLE_API_KEY)
+    llm = GoogleGenAI(
+        model=GEMINI_MODEL, api_key=GOOGLE_API_KEY, temperature=GEMINI_TEMPERATURE
+    )
     index_manager = VectorIndexManager()
     index = index_manager.get_index()
     latex_generator = LaTeXGenerator()
     logger = default_logger
 
     @step
-    async def generate_resume(self, event: CVStartEvent) -> CVGenerateLatexEvent:
+    async def extract_job_description(
+        self, event: CVStartEvent
+    ) -> CVGenerateResumeEvent:
+        self.logger.info(f"Extracting job description from URL: {event.job_url}")
+
+        # Use Playwright scraper for better compatibility
+        scraped_data = await scrape_job_url(event.job_url)
+
+        # Get the page text content directly
+        page_text = scraped_data.get("text", "")
+        page_title = scraped_data.get("page_title", "")
+
+        self.logger.info(
+            f"Successfully extracted content from {scraped_data.get('final_url', event.job_url)}"
+        )
+        self.logger.debug(f"Extracted text length: {len(page_text)} characters")
+
+        if len(page_text) > SCRAPPING_PAGE_CONTENT_LIMIT:
+            self.logger.warning(
+                f"Extracted page text length ({len(page_text)}) exceeds limit of {SCRAPPING_PAGE_CONTENT_LIMIT} characters. Truncating."
+            )
+            page_text = page_text[:SCRAPPING_PAGE_CONTENT_LIMIT]
+        # Use LLM to extract job description from the page content
+        job_description = await self.llm.acomplete(
+            f"Extract the job description, requirements, responsibilities, and key information "
+            f"from the following web page content. Focus on the actual job posting details and ignore "
+            f"navigation, footer, and advertisement content.\n\n"
+            f"Page Title: {page_title}\n\n"
+            f"Page Content:\n{page_text}"
+        )
+
+        job_description_text = job_description.text
+
+        return CVGenerateResumeEvent(job_description=job_description_text)
+
+    @step
+    async def generate_resume(
+        self, event: CVGenerateResumeEvent
+    ) -> CVGenerateLatexEvent:
         self.logger.info(
             f"Starting resume generation for job: {event.job_description[:50]}..."
         )
@@ -31,10 +78,12 @@ class CVWorkflow(Workflow):
             llm=self.llm, output_cls=Resume, response_mode="tree_summarize"
         )
         prompt_template = """
-        Generate a tailored resume for the following job description: {job_description}
+        Generate a tailored resume in English for the bellow job description. 
         
         Use the information from the provided documents to create a professional resume that highlights 
         relevant experience, skills, and qualifications that match the job requirements.
+        Job Description:
+        {job_description}
         """
         prompt = prompt_template.format(job_description=event.job_description)
 
@@ -43,7 +92,7 @@ class CVWorkflow(Workflow):
 
         self.logger.info("Resume data generated successfully")
         # Extract the Resume object from the PydanticResponse
-        resume_data = response.response if hasattr(response, "response") else response
+        resume_data = response.response
         return CVGenerateLatexEvent(resume=resume_data)
 
     @step
@@ -60,11 +109,15 @@ class CVWorkflow(Workflow):
         self.logger.info("Starting PDF generation")
 
         # Generate timestamp for unique filename
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_path = f"output/resume_{timestamp}"
+        resume_output_path = "output/resume"
+        considerations_output_path = "output/considerations.md"
+        with open(considerations_output_path, "w", encoding="utf-8") as f:
+            f.write(event.resume.considerations or "")
 
         try:
-            pdf_path = self.latex_generator.generate_pdf(event.resume, output_path)
+            pdf_path = self.latex_generator.generate_pdf(
+                event.resume, resume_output_path
+            )
             self.logger.info(f"PDF generated successfully: {pdf_path}")
 
             return CVStopEvent(

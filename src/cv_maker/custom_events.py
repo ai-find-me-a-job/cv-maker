@@ -3,6 +3,10 @@ from .models import Resume
 
 
 class CVStartEvent(StartEvent):
+    job_url: str
+
+
+class CVGenerateResumeEvent(Event):
     job_description: str
 
 

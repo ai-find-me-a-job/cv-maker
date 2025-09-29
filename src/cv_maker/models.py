@@ -50,3 +50,9 @@ class Resume(BaseModel):
     education: list[Education] = Field(
         ..., description="List of educational qualifications"
     )
+    considerations: Optional[str] = Field(
+        None,
+        description="Write here, in markdown format, any considerations or notes related to the resume that you built. As example, "
+        "indicate what skills you recognized as important, but you don't have experience with. Or indicate if you "
+        "have any gap in your career.",
+    )

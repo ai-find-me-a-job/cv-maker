@@ -13,3 +13,9 @@ LLAMA_PARSER_API_KEY = os.getenv("LLAMA_PARSE_API_KEY") or ""
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY") or ""
 
 STORAGE_DIR = Path(__file__).parent.parent / "data" / ".storage"
+
+SCRAPPING_PAGE_CONTENT_LIMIT = 15000  # characters
+
+GEMINI_TEMPERATURE = float(os.getenv("GEMINI_TEMPERATURE") or 0.5)
+
+GEMINI_MODEL = os.getenv("GEMINI_MODEL") or "gemini-2.0-flash"
