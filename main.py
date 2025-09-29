@@ -20,9 +20,14 @@ async def test_workflow():
     # print(f"Generated resume: {result.resume}")
     print(f"LaTeX content length: {len(result.latex_content)} characters")
 
+    if result.pdf_path:
+        print(f"PDF generated successfully: {result.pdf_path}")
+    else:
+        print("PDF generation failed, but LaTeX content is available")
+
     # Save LaTeX to file
-    latex_generator = LaTeXGenerator()
-    latex_generator.save_to_file(result.latex_content, "output/generated_resume.tex")
+    # latex_generator = LaTeXGenerator()
+    # latex_generator.save_to_file(result.latex_content, "output/generated_resume.tex")
     print("LaTeX file saved to output/generated_resume.tex")
 
 
@@ -65,9 +70,21 @@ def test_latex_generator():
     )
 
     latex_gen = LaTeXGenerator()
+
+    # Test LaTeX generation
     latex_content = latex_gen.generate(sample_resume)
     latex_gen.save_to_file(latex_content, "output/sample_resume.tex")
     print("Sample LaTeX file saved to output/sample_resume.tex")
+
+    # Test PDF generation
+    try:
+        pdf_path = latex_gen.generate_pdf(sample_resume, "output/sample_resume")
+        print(f"Sample PDF generated successfully: {pdf_path}")
+    except Exception as e:
+        print(f"PDF generation failed: {e}")
+        print(
+            "Make sure you have a LaTeX distribution (like MiKTeX or TeX Live) installed"
+        )
 
 
 if __name__ == "__main__":
@@ -79,6 +96,10 @@ if __name__ == "__main__":
     # print("\n=== Testing LaTeX Generator ===")
     # test_latex_generator()
 
+    # Test LaTeX generator with sample data
+    # print("\n=== Testing LaTeX Generator ===")
+    # test_latex_generator()
+
     # Test full workflow (uncomment when ready to test)
-    print("\n=== Testing Full Workflow ===")
+    # print("\n=== Testing Full Workflow ===")
     asyncio.run(test_workflow())

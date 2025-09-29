@@ -11,5 +11,6 @@ dependencies = [
     "llama-index-llms-google-genai>=0.3.0",
     "llama-index-readers-llama-parse>=0.5.1",
     "llama-parse>=0.6.69",
+    "pylatex>=1.4.2",
     "python-dotenv>=1.1.1",
 ]

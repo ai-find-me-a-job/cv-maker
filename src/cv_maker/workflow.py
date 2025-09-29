@@ -1,11 +1,17 @@
 from llama_index.core.workflow import Workflow, step
-from .custom_events import CVStartEvent, CVStopEvent, CVGenerateLatexEvent
+from .custom_events import (
+    CVStartEvent,
+    CVStopEvent,
+    CVGenerateLatexEvent,
+    CVGeneratePDFEvent,
+)
 from llama_index.llms.google_genai import GoogleGenAI
 from src.config import GOOGLE_API_KEY
 from src.core.index_manager import VectorIndexManager
 from src.logger import default_logger
 from .models import Resume
 from .latex_generator import LaTeXGenerator
+import datetime
 
 
 class CVWorkflow(Workflow):
@@ -36,15 +42,39 @@ class CVWorkflow(Workflow):
         response = await query_engine.aquery(prompt)
 
         self.logger.info("Resume data generated successfully")
-        # The structured output should be directly in the response
-        # When using output_cls=Resume, the response should be a Resume object
-        return CVGenerateLatexEvent(resume=response.response)
+        # Extract the Resume object from the PydanticResponse
+        resume_data = response.response if hasattr(response, "response") else response
+        return CVGenerateLatexEvent(resume=resume_data)
 
     @step
-    async def generate_latex(self, event: CVGenerateLatexEvent) -> CVStopEvent:
+    async def generate_latex(self, event: CVGenerateLatexEvent) -> CVGeneratePDFEvent:
         self.logger.info("Starting LaTeX generation")
 
         latex_content = self.latex_generator.generate(event.resume)
 
         self.logger.info("LaTeX generation completed")
-        return CVStopEvent(latex_content=latex_content)
+        return CVGeneratePDFEvent(resume=event.resume, latex_content=latex_content)
+
+    @step
+    async def generate_pdf(self, event: CVGeneratePDFEvent) -> CVStopEvent:
+        self.logger.info("Starting PDF generation")
+
+        # Generate timestamp for unique filename
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_path = f"output/resume_{timestamp}"
+
+        try:
+            pdf_path = self.latex_generator.generate_pdf(event.resume, output_path)
+            self.logger.info(f"PDF generated successfully: {pdf_path}")
+
+            return CVStopEvent(
+                resume=event.resume,
+                latex_content=event.latex_content,
+                pdf_path=pdf_path,
+            )
+        except Exception as e:
+            self.logger.error(f"PDF generation failed: {e}")
+            # Return without PDF path if generation fails
+            return CVStopEvent(
+                resume=event.resume, latex_content=event.latex_content, pdf_path=""
+            )

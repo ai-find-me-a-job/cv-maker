@@ -10,5 +10,12 @@ class CVGenerateLatexEvent(Event):
     resume: Resume
 
 
-class CVStopEvent(StopEvent):
+class CVGeneratePDFEvent(Event):
+    resume: Resume
     latex_content: str
+
+
+class CVStopEvent(StopEvent):
+    resume: Resume
+    latex_content: str
+    pdf_path: str

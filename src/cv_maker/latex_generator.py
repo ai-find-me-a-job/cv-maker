@@ -1,10 +1,15 @@
 from .models import Resume, Experience, Education, Skills
 from typing import List
 from src.logger import default_logger
+from pylatex import Document, Section
+from pylatex.package import Package
+from pylatex.utils import NoEscape
+import subprocess
+from pathlib import Path
 
 
 class LaTeXGenerator:
-    """Generate LaTeX code from Resume model data."""
+    """Generate LaTeX code from Resume model data using PyLaTeX."""
 
     def __init__(self):
         self.logger = default_logger
@@ -19,85 +24,52 @@ class LaTeXGenerator:
         Returns:
             Complete LaTeX document as string
         """
-        self.logger.info("Starting LaTeX generation for resume")
+        self.logger.info("Starting LaTeX generation for resume using PyLaTeX")
 
-        latex_content = self._generate_header()
-        latex_content += self._generate_personal_info(resume)
-        latex_content += self._generate_experience(resume.experience)
-        latex_content += self._generate_skills(resume.skills)
-        latex_content += self._generate_education(resume.education)
-        latex_content += self._generate_footer()
+        # Create document with geometry and basic setup
+        doc = Document(geometry_options={"margin": "1cm"})
+
+        # Add packages
+        doc.packages.append(Package("inputenc", options=["utf8"]))
+        doc.packages.append(Package("fontenc", options=["T1"]))
+        doc.packages.append(Package("babel", options=["english"]))
+        doc.packages.append(Package("parskip"))
+        doc.packages.append(Package("hyperref"))
+        doc.packages.append(Package("titlesec"))
+        doc.packages.append(Package("bookmark"))
+
+        # Add document setup commands
+        doc.append(NoEscape(r"\pagestyle{empty}"))
+        doc.append(NoEscape(r"\setcounter{secnumdepth}{0}"))
+
+        # Configure hyperref
+        doc.append(
+            NoEscape(
+                r"\hypersetup{colorlinks=true,linkcolor=black,urlcolor=black,citecolor=black}"
+            )
+        )
+
+        # Configure section formatting
+        doc.append(
+            NoEscape(
+                r"\titleformat{\section}{\Large\bfseries}{}{0em}{}[\titlerule\vspace{0.5ex}]"
+            )
+        )
+
+        # Generate content
+        self._generate_personal_info(doc, resume)
+        self._generate_experience(doc, resume.experience)
+        self._generate_skills(doc, resume.skills)
+        self._generate_education(doc, resume.education)
 
         self.logger.info("LaTeX generation completed")
-        return latex_content
+        return doc.dumps()
 
-    def _generate_header(self) -> str:
-        """Generate LaTeX document header with packages and setup."""
-        return """% GitHub Repo and Documentation: https://github.com/celiobjunior/resume-template
-% Copyright © 2025 Celio B Junior. All rights reserved.
-% 
-% Licensed under the Apache License, Version 2.0 (the "License");
-% you may not use this file except in compliance with the License.
-% You may obtain a copy of the License at
-%
-%     http://www.apache.org/licenses/LICENSE-2.0
-%
-% This template follows best practices from README.md
-
-% Start of LaTeX document: defines document type and format
-% a4paper = A4 page size, 10pt = base font size
-\\documentclass[a4paper,10pt]{article}
-
-% --- PACKAGES ---
-\\usepackage[utf8]{inputenc}
-\\usepackage[T1]{fontenc}
-\\usepackage[english]{babel}
-\\usepackage{geometry}
-\\usepackage{parskip}
-\\usepackage{hyperref}
-\\usepackage{titlesec}
-% For better line breaks in long URLs (don't use \\href{}, use \\url{} for long URLs)
-% \\usepackage{xurl}
-
-% --- DOCUMENT SETUP ---
-% Set page margins to maximize content space
-\\geometry{top=1.0cm, bottom=1.0cm, left=1.0cm, right=1.0cm}
-
-% Remove page numbers and headers for clean resume look
-\\pagestyle{empty}
-
-% PDF metadata - customize with your information
-\\hypersetup{
-    pdftitle={CV Generated Resume},
-    pdfauthor={Generated Resume},
-    colorlinks=true,
-    linkcolor=black,
-    urlcolor=black,
-    citecolor=black,
-    bookmarksdepth=1 
-}
-
-% Disable section numbering for cleaner appearance
-\\setcounter{secnumdepth}{0}
-
-% Format section headers with bold text and underline
-\\titleformat{\\section}
-{\\Large\\bfseries}
-{}
-{0em}
-{}
-[\\titlerule\\vspace{0.5ex}]
-
-% --- BEGIN DOCUMENT ---
-\\begin{document}
-
-"""
-
-    def _generate_personal_info(self, resume: Resume) -> str:
+    def _generate_personal_info(self, doc: Document, resume: Resume) -> None:
         """Generate personal information header."""
         self.logger.debug(f"Generating personal info for {resume.name}")
 
-        # Build contact information line
+        # Build contact information
         contact_parts = []
         contact_parts.append(
             f"Email: \\href{{mailto:{resume.email}}}{{{resume.email}}}"
@@ -107,7 +79,6 @@ class LaTeXGenerator:
             contact_parts.append(f"Phone: {resume.phone}")
 
         if resume.linkedIn:
-            # Extract username from LinkedIn URL if it's a full URL
             linkedin_display = resume.linkedIn
             if resume.linkedIn.startswith("http"):
                 linkedin_display = resume.linkedIn.split("/in/")[-1].rstrip("/")
@@ -115,7 +86,6 @@ class LaTeXGenerator:
             contact_parts.append(f"\\href{{{resume.linkedIn}}}{{{linkedin_display}}}")
 
         if resume.github:
-            # Extract username from GitHub URL if it's a full URL
             github_display = resume.github
             if resume.github.startswith("http"):
                 github_display = resume.github.split("/")[-1].rstrip("/")
@@ -124,130 +94,165 @@ class LaTeXGenerator:
 
         contact_line = " {\\textbullet} ".join(contact_parts)
 
-        return f"""% --- HEADER ---
-% Personal information
-\\begin{{center}}
-    {{\\LARGE \\textbf{{{self._escape_latex(resume.name)}}}}} 
-    \\\\ [0.1cm]
-    {self._escape_latex(resume.address)}
-    \\\\ [0.1cm] 
-    {contact_line}
-\\end{{center}}
+        # Add header using center environment
+        doc.append(NoEscape(r"\begin{center}"))
+        doc.append(NoEscape(f"{{\\LARGE \\textbf{{{resume.name}}}}}"))
+        doc.append(NoEscape(r"\\ [0.1cm]"))
+        doc.append(NoEscape(resume.address))
+        doc.append(NoEscape(r"\\ [0.1cm]"))
+        doc.append(NoEscape(contact_line))
+        doc.append(NoEscape(r"\end{center}"))
+        doc.append(NoEscape(r"\vspace{0.5cm}"))
 
-"""
-
-    def _generate_experience(self, experiences: List[Experience]) -> str:
+    def _generate_experience(
+        self, doc: Document, experiences: List[Experience]
+    ) -> None:
         """Generate experience section."""
         self.logger.debug(
             f"Generating experience section with {len(experiences)} entries"
         )
 
         if not experiences:
-            return ""
+            return
 
-        latex = "\\section{Experience}\n"
+        with doc.create(Section("Experience")):
+            for exp in experiences:
+                # Format dates
+                date_range = exp.start_date
+                if exp.end_date:
+                    date_range += f" - {exp.end_date}"
 
-        for exp in experiences:
-            # Format dates
-            date_range = exp.start_date
-            if exp.end_date:
-                date_range += f" - {exp.end_date}"
+                # Create subsection with company and location
+                subsection_title = NoEscape(f"\\textbf{{{exp.company}}} \\hfill Remote")
+                doc.append(NoEscape(f"\\subsection*{{{subsection_title}}}"))
 
-            latex += f"""    \\subsection*{{\\texorpdfstring{{
-            \\textbf{{{self._escape_latex(exp.company)}}} \\hfill {self._escape_latex("Remote")}
-        }}{{
-            {self._escape_latex(exp.company)} -- Remote
-        }}}}
-    \\textit{{{self._escape_latex(exp.job_title)} \\hfill {self._escape_latex(date_range)}}}
-        \\begin{{itemize}}
-"""
+                # Add job title and dates
+                job_info = NoEscape(
+                    f"\\textit{{{exp.job_title.replace('&', r'\&')} \\hfill {date_range}}}"
+                )
+                doc.append(job_info)
 
-            # Add bullet points
-            for bullet in exp.bullet_points:
-                latex += f"            \\item {self._escape_latex(bullet)}\n"
+                # Add bullet points
+                doc.append(NoEscape(r"\begin{itemize}"))
+                for bullet in exp.bullet_points:
+                    doc.append(NoEscape(f"\\item {bullet}"))
+                doc.append(NoEscape(r"\end{itemize}"))
+                doc.append(NoEscape(r"\vspace{0.2cm}"))
 
-            latex += "        \\end{itemize}\n\n"
-
-        return latex
-
-    def _generate_skills(self, skills: Skills) -> str:
+    def _generate_skills(self, doc: Document, skills: Skills) -> None:
         """Generate skills section."""
         self.logger.debug("Generating skills section")
 
-        latex = "\\section{Skills}\n    \\begin{itemize}\n"
+        with doc.create(Section("Skills")):
+            doc.append(NoEscape(r"\begin{itemize}"))
+            if skills.technical_skills:
+                technical_skills_str = ", ".join(skills.technical_skills)
+                doc.append(
+                    NoEscape(f"\\item \\textbf{{Technical:}} {technical_skills_str}")
+                )
 
-        if skills.technical_skills:
-            technical_skills_str = ", ".join(skills.technical_skills)
-            latex += f"        \\item \\textbf{{Technical:}} {self._escape_latex(technical_skills_str)}\n"
+            if skills.languages:
+                languages_str = ", ".join(skills.languages)
+                doc.append(NoEscape(f"\\item \\textbf{{Languages:}} {languages_str}"))
 
-        if skills.languages:
-            languages_str = ", ".join(skills.languages)
-            latex += f"        \\item \\textbf{{Languages:}} {self._escape_latex(languages_str)}\n"
+            if skills.soft_skills:
+                soft_skills_str = ", ".join(skills.soft_skills)
+                doc.append(
+                    NoEscape(f"\\item \\textbf{{Soft Skills:}} {soft_skills_str}")
+                )
+            doc.append(NoEscape(r"\end{itemize}"))
 
-        if skills.soft_skills:
-            soft_skills_str = ", ".join(skills.soft_skills)
-            latex += f"        \\item \\textbf{{Soft Skills:}} {self._escape_latex(soft_skills_str)}\n"
-
-        latex += "    \\end{itemize}\n\n"
-        return latex
-
-    def _generate_education(self, education: List[Education]) -> str:
+    def _generate_education(self, doc: Document, education: List[Education]) -> None:
         """Generate education section."""
         self.logger.debug(f"Generating education section with {len(education)} entries")
 
         if not education:
-            return ""
+            return
 
-        latex = "\\section{Education}\n"
+        with doc.create(Section("Education")):
+            for edu in education:
+                # Create subsection with institution
+                subsection_title = NoEscape(
+                    f"\\textbf{{{edu.institution}}} \\hfill Remote"
+                )
+                doc.append(NoEscape(f"\\subsection*{{{subsection_title}}}"))
 
-        for edu in education:
-            latex += f"""    \\subsection*{{\\texorpdfstring{{
-            \\textbf{{{self._escape_latex(edu.institution)}}} \\hfill {self._escape_latex("Remote")}
-        }}{{
-            {self._escape_latex(edu.institution)} (Education) -- Remote
-        }}}}
-    \\textit{{{self._escape_latex(edu.degree)} \\hfill {self._escape_latex(edu.graduation_year)}}}
+                # Add degree and graduation year
+                degree_info = NoEscape(
+                    f"\\textit{{{edu.degree} \\hfill {edu.graduation_year}}}"
+                )
+                doc.append(degree_info)
+                doc.append(NoEscape(r"\vspace{0.2cm}"))
 
-"""
-
-        return latex
-
-    def _generate_footer(self) -> str:
-        """Generate document footer."""
-        return "\\end{document}\n"
-
-    def _escape_latex(self, text: str) -> str:
+    def generate_pdf(
+        self, resume: Resume, output_path: str, clean_temp_files: bool = True
+    ) -> str:
         """
-        Escape special LaTeX characters in text.
+        Generate PDF directly from Resume data.
 
         Args:
-            text: Input text that may contain special characters
+            resume: Resume model instance with all data
+            output_path: Path where to save the PDF file (without extension)
 
         Returns:
-            Text with LaTeX special characters properly escaped
+            Path to the generated PDF file
         """
-        if not text:
-            return ""
+        self.logger.info(f"Starting PDF generation for resume: {output_path}")
 
-        # Dictionary of LaTeX special characters and their escaped versions
-        latex_special_chars = {
-            "&": "\\&",
-            "%": "\\%",
-            "$": "\\$",
-            "#": "\\#",
-            "^": "\\textasciicircum{}",
-            "_": "\\_",
-            "{": "\\{",
-            "}": "\\}",
-            "~": "\\textasciitilde{}",
-            "\\": "\\textbackslash{}",
-        }
+        # Create document with geometry and basic setup
+        doc = Document(geometry_options={"margin": "1cm"})
 
-        escaped_text = text
-        for char, escaped in latex_special_chars.items():
-            escaped_text = escaped_text.replace(char, escaped)
+        # Add packages
+        doc.packages.append(Package("inputenc", options=["utf8"]))
+        doc.packages.append(Package("fontenc", options=["T1"]))
+        doc.packages.append(Package("babel", options=["english"]))
+        doc.packages.append(Package("parskip"))
+        doc.packages.append(Package("hyperref"))
+        doc.packages.append(Package("titlesec"))
 
-        return escaped_text
+        # Add document setup commands
+        doc.append(NoEscape(r"\pagestyle{empty}"))
+        doc.append(NoEscape(r"\setcounter{secnumdepth}{0}"))
+
+        # Configure hyperref
+        doc.append(
+            NoEscape(
+                r"\hypersetup{colorlinks=true,linkcolor=black,urlcolor=black,citecolor=black}"
+            )
+        )
+
+        # Configure section formatting
+        doc.append(
+            NoEscape(
+                r"\titleformat{\section}{\Large\bfseries}{}{0em}{}[\titlerule\vspace{0.5ex}]"
+            )
+        )
+
+        # Generate content
+        self._generate_personal_info(doc, resume)
+        self._generate_experience(doc, resume.experience)
+        self._generate_skills(doc, resume.skills)
+        self._generate_education(doc, resume.education)
+
+        # Generate PDF
+        try:
+            # Ensure output directory exists
+            output_dir = Path(output_path).parent
+            output_dir.mkdir(parents=True, exist_ok=True)
+
+            # Generate PDF
+            doc.generate_pdf(output_path, clean=clean_temp_files, compiler="pdflatex")
+            pdf_path = f"{output_path}.pdf"
+
+            self.logger.info(f"PDF generated successfully: {pdf_path}")
+            return pdf_path
+
+        except subprocess.CalledProcessError as e:
+            self.logger.error(f"Failed to generate PDF: {e}")
+            raise RuntimeError(f"PDF generation failed: {e}")
+        except Exception as e:
+            self.logger.error(f"Unexpected error during PDF generation: {e}")
+            raise
 
     def save_to_file(self, latex_content: str, output_path: str) -> None:
         """
