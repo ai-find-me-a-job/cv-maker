@@ -15,9 +15,10 @@ from src.config import (
 )
 from src.core.index_manager import VectorIndexManager
 from src.logger import default_logger
-from src.cv_maker.models import Resume
+from .models import Resume
 from src.cv_maker.latex_generator import LaTeXGenerator
 from src.core.web_scraper import scrape_job_url
+from .prompts import RESUME_CREATION_PROMPT_TEMPLATE
 
 
 class CVWorkflow(Workflow):
@@ -76,15 +77,10 @@ class CVWorkflow(Workflow):
         query_engine = self.index.as_query_engine(
             llm=self.llm, output_cls=Resume, response_mode="tree_summarize"
         )
-        prompt_template = """
-        Generate a tailored resume in English for the bellow job description. 
-        
-        Use the information from the provided documents to create a professional resume that highlights 
-        relevant experience, skills, and qualifications that match the job requirements.
-        Job Description:
-        {job_description}
-        """
-        prompt = prompt_template.format(job_description=event.job_description)
+
+        prompt = RESUME_CREATION_PROMPT_TEMPLATE.format(
+            job_description=event.job_description
+        )
 
         self.logger.info("Querying index for resume generation")
         response = await query_engine.aquery(prompt)

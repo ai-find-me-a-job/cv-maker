@@ -1,4 +1,4 @@
-from .models import Resume, Experience, Education, Skills
+from src.cv_maker.workflow.models import Resume, Experience, Education, Skills
 from typing import List
 from src.logger import default_logger
 from pylatex import Document, Section
@@ -79,18 +79,10 @@ class LaTeXGenerator:
             contact_parts.append(f"Phone: {self._escape_latex(resume.phone)}")
 
         if resume.linkedIn:
-            linkedin_display = resume.linkedIn
-            if resume.linkedIn.startswith("http"):
-                linkedin_display = resume.linkedIn.split("/in/")[-1].rstrip("/")
-                linkedin_display = f"linkedin.com/in/{linkedin_display}"
-            contact_parts.append(f"\\href{{{resume.linkedIn}}}{{{linkedin_display}}}")
+            contact_parts.append(f"\\href{{{resume.linkedIn}}}{{{resume.linkedIn}}}")
 
         if resume.github:
-            github_display = resume.github
-            if resume.github.startswith("http"):
-                github_display = resume.github.split("/")[-1].rstrip("/")
-                github_display = f"github.com/{github_display}"
-            contact_parts.append(f"\\href{{{resume.github}}}{{{github_display}}}")
+            contact_parts.append(f"\\href{{{resume.github}}}{{{resume.github}}}")
 
         contact_line = " {\\textbullet} ".join(contact_parts)
 
@@ -126,7 +118,7 @@ class LaTeXGenerator:
 
                 # Create subsection with company and location
                 subsection_title = NoEscape(
-                    f"\\textbf{{{self._escape_latex(exp.company)}}} \\hfill Remote"
+                    f"\\textbf{{{self._escape_latex(exp.company)}}} \\hfill {exp.location}"
                 )
                 doc.append(NoEscape(f"\\subsection*{{{subsection_title}}}"))
 
@@ -183,7 +175,7 @@ class LaTeXGenerator:
             for edu in education:
                 # Create subsection with institution
                 subsection_title = NoEscape(
-                    f"\\textbf{{{self._escape_latex(edu.institution)}}} \\hfill Remote"
+                    f"\\textbf{{{self._escape_latex(edu.institution)}}} \\hfill {edu.location}"
                 )
                 doc.append(NoEscape(f"\\subsection*{{{subsection_title}}}"))
 

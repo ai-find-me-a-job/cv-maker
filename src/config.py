@@ -16,6 +16,6 @@ STORAGE_DIR = Path(__file__).parent.parent / "data" / ".storage"
 
 SCRAPPING_PAGE_CONTENT_LIMIT = 15000  # characters
 
-GEMINI_TEMPERATURE = float(os.getenv("GEMINI_TEMPERATURE") or 0.5)
+GEMINI_TEMPERATURE = float(os.getenv("GEMINI_TEMPERATURE") or 0.1)
 
 GEMINI_MODEL = os.getenv("GEMINI_MODEL") or "gemini-2.0-flash"

@@ -14,6 +14,11 @@ class Experience(BaseModel):
     bullet_points: list[str] = Field(
         ..., description="List of responsibilities and achievements"
     )
+    location: str = Field(
+        ...,
+        description="Location of the job. Use the format 'State, Country' or 'Remote'."
+        "If not clear, assume 'Remote'.",
+    )
 
 
 class Skills(BaseModel):
@@ -32,6 +37,11 @@ class Education(BaseModel):
         ..., description="Degree obtained (e.g., B.Sc. in Computer Science)"
     )
     graduation_year: str = Field(..., description="Year of graduation (e.g., 2020)")
+    location: str = Field(
+        ...,
+        description="Location of the institution. Use the format 'State, Country' or 'Remote'."
+        "If not clear, assume 'Remote'.",
+    )
 
 
 class Resume(BaseModel):
@@ -40,9 +50,18 @@ class Resume(BaseModel):
     name: str = Field(..., description="Full name of the individual")
     email: str = Field(..., description="Email address")
     phone: str = Field(..., description="Phone number")
-    address: str = Field(..., description="Physical address")
-    linkedIn: Optional[str] = Field(..., description="LinkedIn profile URL")
-    github: Optional[str] = Field(..., description="GitHub profile URL")
+    address: str = Field(
+        ...,
+        description="Physical address, use the format 'City, State Abbreviation, Country'",
+    )
+    linkedIn: Optional[str] = Field(
+        ...,
+        description="LinkedIn profile URL. If applicable, use the format 'linkedin.com/in/joe-dee-dev'",
+    )
+    github: Optional[str] = Field(
+        ...,
+        description="GitHub profile URL. If applicable, use the format 'github.com/joe-dee-dev'",
+    )
     experience: list[Experience] = Field(
         ..., description="List of professional experiences"
     )
