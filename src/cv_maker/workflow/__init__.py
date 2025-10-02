@@ -17,7 +17,7 @@ from src.config import (
 from src.core.index_manager import VectorIndexManager
 from src.logger import default_logger
 from .models import Resume
-from src.cv_maker.latex_generator import LaTeXGenerator
+from .latex_generator import LaTeXGenerator
 from src.core.web_scraper import scrape_job_url
 from .prompts import RESUME_CREATION_PROMPT_TEMPLATE
 
