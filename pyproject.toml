@@ -5,6 +5,7 @@ description = "AI Agentic Workflow to build a CV"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "python-multipart>=0.0.9",
     "ipykernel>=6.30.1",
     "llama-index-core>=0.14.2",
     "llama-index-embeddings-google-genai>=0.3.0",
@@ -14,4 +15,5 @@ dependencies = [
     "playwright>=1.55.0",
     "pylatex>=1.4.2",
     "python-dotenv>=1.1.1",
+    "fastapi[standard]>=0.118.0",
 ]
