@@ -3,6 +3,11 @@ from src.cv_maker.workflow.models import Resume
 
 
 class CVStartEvent(StartEvent):
+    job_url: str | None = None
+    job_description: str | None = None
+
+
+class CVExtractJobDescriptionEvent(Event):
     job_url: str
 
 

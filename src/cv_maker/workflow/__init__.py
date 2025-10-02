@@ -5,6 +5,7 @@ from .custom_events import (
     CVGenerateResumeEvent,
     CVGenerateLatexEvent,
     CVGeneratePDFEvent,
+    CVExtractJobDescriptionEvent,
 )
 from llama_index.llms.google_genai import GoogleGenAI
 from src.config import (
@@ -31,8 +32,19 @@ class CVWorkflow(Workflow):
     logger = default_logger
 
     @step
-    async def extract_job_description(
+    async def start(
         self, event: CVStartEvent
+    ) -> CVExtractJobDescriptionEvent | CVGenerateResumeEvent:
+        if event.job_url:
+            return CVExtractJobDescriptionEvent(job_url=event.job_url)
+        elif event.job_description:
+            return CVGenerateResumeEvent(job_description=event.job_description)
+        else:
+            raise ValueError("Either job_url or job_description must be provided.")
+
+    @step
+    async def extract_job_description(
+        self, event: CVExtractJobDescriptionEvent
     ) -> CVGenerateResumeEvent:
         self.logger.info(f"Extracting job description from URL: {event.job_url}")
 
