@@ -14,7 +14,7 @@ class LaTeXGenerator:
     def __init__(self):
         self.logger = default_logger
 
-    def generate(self, resume: Resume) -> str:
+    def generate_latex_doc(self, resume: Resume) -> Document:
         """
         Generate complete LaTeX document from Resume data.
 
@@ -22,7 +22,7 @@ class LaTeXGenerator:
             resume: Resume model instance with all data
 
         Returns:
-            Complete LaTeX document as string
+            Complete LaTeX document as Document object
         """
         self.logger.info("Starting LaTeX generation for resume using PyLaTeX")
 
@@ -36,7 +36,6 @@ class LaTeXGenerator:
         doc.packages.append(Package("parskip"))
         doc.packages.append(Package("hyperref"))
         doc.packages.append(Package("titlesec"))
-        doc.packages.append(Package("bookmark"))
 
         # Add document setup commands
         doc.append(NoEscape(r"\pagestyle{empty}"))
@@ -63,7 +62,8 @@ class LaTeXGenerator:
         self._generate_education(doc, resume.education)
 
         self.logger.info("LaTeX generation completed")
-        return doc.dumps()
+
+        return doc
 
     def _generate_personal_info(self, doc: Document, resume: Resume) -> None:
         """Generate personal information header."""
@@ -200,42 +200,7 @@ class LaTeXGenerator:
             Path to the generated PDF file
         """
         self.logger.info(f"Starting PDF generation for resume: {output_path}")
-
-        # Create document with geometry and basic setup
-        doc = Document(geometry_options={"margin": "1cm"})
-
-        # Add packages
-        doc.packages.append(Package("inputenc", options=["utf8"]))
-        doc.packages.append(Package("fontenc", options=["T1"]))
-        doc.packages.append(Package("babel", options=["english"]))
-        doc.packages.append(Package("parskip"))
-        doc.packages.append(Package("hyperref"))
-        doc.packages.append(Package("titlesec"))
-
-        # Add document setup commands
-        doc.append(NoEscape(r"\pagestyle{empty}"))
-        doc.append(NoEscape(r"\setcounter{secnumdepth}{0}"))
-
-        # Configure hyperref
-        doc.append(
-            NoEscape(
-                r"\hypersetup{colorlinks=true,linkcolor=black,urlcolor=black,citecolor=black}"
-            )
-        )
-
-        # Configure section formatting
-        doc.append(
-            NoEscape(
-                r"\titleformat{\section}{\Large\bfseries}{}{0em}{}[\titlerule\vspace{0.5ex}]"
-            )
-        )
-
-        # Generate content
-        self._generate_personal_info(doc, resume)
-        self._generate_experience(doc, resume.experience)
-        self._generate_skills(doc, resume.skills)
-        self._generate_education(doc, resume.education)
-
+        doc = self.generate_latex_doc(resume)
         # Generate PDF
         try:
             # Ensure output directory exists
@@ -243,7 +208,12 @@ class LaTeXGenerator:
             output_dir.mkdir(parents=True, exist_ok=True)
 
             # Generate PDF
-            doc.generate_pdf(output_path, clean=clean_temp_files, compiler="pdflatex")
+            doc.generate_pdf(
+                output_path,
+                clean=clean_temp_files,
+                compiler="pdflatex",
+                clean_tex=False,
+            )
             pdf_path = f"{output_path}.pdf"
 
             self.logger.info(f"PDF generated successfully: {pdf_path}")
