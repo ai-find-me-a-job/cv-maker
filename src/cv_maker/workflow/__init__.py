@@ -2,10 +2,9 @@ from llama_index.core.workflow import Workflow, step
 from .custom_events import (
     CVStartEvent,
     CVStopEvent,
-    CVGenerateResumeEvent,
-    CVGenerateLatexEvent,
-    CVGeneratePDFEvent,
-    CVExtractJobDescriptionEvent,
+    GenerateResumeEvent,
+    GeneratePDFEvent,
+    ExtractJobDescriptionEvent,
 )
 from llama_index.llms.google_genai import GoogleGenAI
 from src.config import (
@@ -34,18 +33,18 @@ class CVWorkflow(Workflow):
     @step
     async def start(
         self, event: CVStartEvent
-    ) -> CVExtractJobDescriptionEvent | CVGenerateResumeEvent:
+    ) -> ExtractJobDescriptionEvent | GenerateResumeEvent:
         if event.job_url:
-            return CVExtractJobDescriptionEvent(job_url=event.job_url)
+            return ExtractJobDescriptionEvent(job_url=event.job_url)
         elif event.job_description:
-            return CVGenerateResumeEvent(job_description=event.job_description)
+            return GenerateResumeEvent(job_description=event.job_description)
         else:
             raise ValueError("Either job_url or job_description must be provided.")
 
     @step
     async def extract_job_description(
-        self, event: CVExtractJobDescriptionEvent
-    ) -> CVGenerateResumeEvent:
+        self, event: ExtractJobDescriptionEvent
+    ) -> GenerateResumeEvent:
         self.logger.info(f"Extracting job description from URL: {event.job_url}")
 
         # Use Playwright scraper for better compatibility
@@ -76,12 +75,10 @@ class CVWorkflow(Workflow):
 
         job_description_text = job_description.text
 
-        return CVGenerateResumeEvent(job_description=job_description_text)
+        return GenerateResumeEvent(job_description=job_description_text)
 
     @step
-    async def generate_resume(
-        self, event: CVGenerateResumeEvent
-    ) -> CVGenerateLatexEvent:
+    async def generate_resume(self, event: GenerateResumeEvent) -> GeneratePDFEvent:
         self.logger.info(
             f"Starting resume generation for job: {event.job_description[:50]}..."
         )
@@ -100,19 +97,10 @@ class CVWorkflow(Workflow):
         self.logger.info("Resume data generated successfully")
         # Extract the Resume object from the PydanticResponse
         resume_data = response.response
-        return CVGenerateLatexEvent(resume=resume_data)
+        return GeneratePDFEvent(resume=resume_data)
 
     @step
-    async def generate_latex(self, event: CVGenerateLatexEvent) -> CVGeneratePDFEvent:
-        self.logger.info("Starting LaTeX generation")
-
-        latex_content = self.latex_generator.generate(event.resume)
-
-        self.logger.info("LaTeX generation completed")
-        return CVGeneratePDFEvent(resume=event.resume, latex_content=latex_content)
-
-    @step
-    async def generate_pdf(self, event: CVGeneratePDFEvent) -> CVStopEvent:
+    async def generate_pdf(self, event: GeneratePDFEvent) -> CVStopEvent:
         self.logger.info("Starting PDF generation")
 
         # Generate timestamp for unique filename
@@ -123,7 +111,7 @@ class CVWorkflow(Workflow):
 
         try:
             pdf_path = self.latex_generator.generate_pdf(
-                event.resume, resume_output_path
+                event.resume, resume_output_path, clean_temp_files=False
             )
             self.logger.info(f"PDF generated successfully: {pdf_path}")
 

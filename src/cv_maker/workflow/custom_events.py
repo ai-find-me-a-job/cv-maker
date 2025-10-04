@@ -7,21 +7,16 @@ class CVStartEvent(StartEvent):
     job_description: str | None = None
 
 
-class CVExtractJobDescriptionEvent(Event):
+class ExtractJobDescriptionEvent(Event):
     job_url: str
 
 
-class CVGenerateResumeEvent(Event):
+class GenerateResumeEvent(Event):
     job_description: str
 
 
-class CVGenerateLatexEvent(Event):
+class GeneratePDFEvent(Event):
     resume: Resume
-
-
-class CVGeneratePDFEvent(Event):
-    resume: Resume
-    latex_content: str
 
 
 class CVStopEvent(StopEvent):
