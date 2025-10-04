@@ -18,7 +18,7 @@ from src.logger import default_logger
 from .models import Resume
 from .latex_generator import LaTeXGenerator
 from src.core.web_scraper import scrape_job_url
-from .prompts import RESUME_CREATION_PROMPT_TEMPLATE
+from .prompts import RESUME_CREATION_PROMPT_TEMPLATE, JOB_EXTRACTION_PROMPT_TEMPLATE
 
 
 class CVWorkflow(Workflow):
@@ -64,13 +64,12 @@ class CVWorkflow(Workflow):
                 f"Extracted page text length ({len(page_text)}) exceeds limit of {SCRAPPING_PAGE_CONTENT_LIMIT} characters. Truncating."
             )
             page_text = page_text[:SCRAPPING_PAGE_CONTENT_LIMIT]
+
         # Use LLM to extract job description from the page content
         job_description = await self.llm.acomplete(
-            f"Extract the job description, requirements, responsibilities, and key information "
-            f"from the following web page content. Focus on the actual job posting details and ignore "
-            f"navigation, footer, and advertisement content.\n\n"
-            f"Page Title: {page_title}\n\n"
-            f"Page Content:\n{page_text}"
+            JOB_EXTRACTION_PROMPT_TEMPLATE.format(
+                page_title=page_title, page_content=page_text
+            )
         )
 
         job_description_text = job_description.text

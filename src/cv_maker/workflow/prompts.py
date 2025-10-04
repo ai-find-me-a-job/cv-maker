@@ -72,3 +72,20 @@ experience, and qualifications based on the information retrieved from the docum
 "{job_description}"
 
 """
+
+
+JOB_EXTRACTION_PROMPT_TEMPLATE = """
+# Task
+Extract the job description, requirements, responsibilities, and key information
+from the following web page content.
+
+# Guidelines
+Focus on the actual job posting details and ignore
+navigation, footer, and advertisement content.
+---
+## Page Title: {page_title}
+
+## Page Content:
+{page_text}
+
+"""
