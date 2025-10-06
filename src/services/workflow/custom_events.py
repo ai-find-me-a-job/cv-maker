@@ -1,5 +1,5 @@
 from llama_index.core.workflow import StartEvent, StopEvent, Event
-from src.cv_maker.workflow.models import Resume
+from .extraction_models import Resume
 
 
 class CVStartEvent(StartEvent):

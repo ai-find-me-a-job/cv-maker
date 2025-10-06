@@ -1,4 +1,4 @@
-from src.cv_maker.workflow import CVWorkflow, CVStopEvent
+from .workflow import CVWorkflow, CVStopEvent
 from src.core.index_manager import VectorIndexManager
 from pathlib import Path
 

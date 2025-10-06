@@ -1,13 +1,13 @@
 from fastapi import APIRouter, HTTPException, Body
-from .schemas import (
+from src.models.cv import (
     CVWorkflowResponse,
     JobUrlRequest,
 )
 import logging
 
-from src.cv_maker.services import run_cv_workflow
+from src.services import run_cv_workflow
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 
 router = APIRouter(prefix="/cv", tags=["CV Generation"])
 

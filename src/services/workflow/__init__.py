@@ -8,15 +8,15 @@ from .custom_events import (
     AskForCandidateInfoEvent,
 )
 from llama_index.llms.google_genai import GoogleGenAI
-from src.config import (
+from src.core.config import (
     GOOGLE_API_KEY,
     SCRAPPING_PAGE_CONTENT_LIMIT,
     GEMINI_TEMPERATURE,
     GEMINI_MODEL,
 )
 from src.core.index_manager import VectorIndexManager
-from src.logger import default_logger
-from .models import Resume
+import logging
+from .extraction_models import Resume
 from .latex_generator import LaTeXGenerator
 from src.core.web_scraper import scrape_job_url
 from .prompts import RESUME_CREATION_PROMPT_TEMPLATE, JOB_EXTRACTION_PROMPT_TEMPLATE
@@ -29,7 +29,7 @@ class CVWorkflow(Workflow):
     index_manager = VectorIndexManager()
     index = index_manager.get_index()
     latex_generator = LaTeXGenerator()
-    logger = default_logger
+    logger = logging.getLogger("cv_workflow")
 
     @step
     async def start(

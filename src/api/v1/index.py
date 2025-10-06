@@ -1,12 +1,12 @@
 from fastapi import APIRouter, HTTPException, UploadFile, File
-from .schemas import AddFilesResponse
+from src.models.index import AddFilesResponse
+from src.services import add_files_to_index
 from pathlib import Path
 import logging
 import tempfile
 
-from src.cv_maker.services import add_files_to_index
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 
 router = APIRouter(prefix="/cv/index", tags=["Index Management"])
 

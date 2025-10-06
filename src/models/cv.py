@@ -12,11 +12,3 @@ class JobUrlRequest(BaseModel):
 class CVWorkflowResponse(BaseModel):
     latex_content: str
     pdf_path: str | None = None
-
-
-class AddFilesRequest(BaseModel):
-    file_paths: list[str]
-
-
-class AddFilesResponse(BaseModel):
-    added_files: list[str]

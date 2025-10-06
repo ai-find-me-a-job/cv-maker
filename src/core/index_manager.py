@@ -7,8 +7,8 @@ from llama_index.core import (
 )
 from llama_index.embeddings.google_genai import GoogleGenAIEmbedding
 from pathlib import Path
-from src.config import GOOGLE_API_KEY, LLAMA_PARSER_API_KEY, STORAGE_DIR
-from src.logger import default_logger as logger
+from .config import GOOGLE_API_KEY, LLAMA_PARSER_API_KEY, STORAGE_DIR
+import logging as logger
 from typing import Sequence
 
 

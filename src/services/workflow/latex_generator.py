@@ -1,18 +1,18 @@
-from src.cv_maker.workflow.models import Resume, Experience, Education, Skills
+from .extraction_models import Resume, Experience, Education, Skills
 from typing import List
-from src.logger import default_logger
 from pylatex import Document, Section
 from pylatex.package import Package
 from pylatex.utils import NoEscape
 import subprocess
 from pathlib import Path
+import logging
 
 
 class LaTeXGenerator:
     """Generate LaTeX code from Resume model data using PyLaTeX."""
 
     def __init__(self):
-        self.logger = default_logger
+        self.logger = logging.getLogger(__name__)
         self.doc: Document = self._initialize_document()
 
     def _initialize_document(self) -> Document:

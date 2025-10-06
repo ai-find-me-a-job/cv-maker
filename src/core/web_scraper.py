@@ -1,6 +1,6 @@
 from playwright.async_api import async_playwright, Browser
 from typing import Optional, Dict, Any
-from src.logger import default_logger
+import logging
 from .exceptions import WebScrapError
 
 
@@ -11,7 +11,7 @@ class JobWebScraper:
     """
 
     def __init__(self, headless: bool = True, timeout: int = 30000):
-        self.logger = default_logger
+        self.logger = logging.getLogger(__name__)
         self.headless = headless
         self.timeout = timeout
         self.browser: Optional[Browser] = None
