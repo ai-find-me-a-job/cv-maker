@@ -13,3 +13,5 @@ wheels/
 .tests.py
 data/files
 output/
+.github/
+app.log
