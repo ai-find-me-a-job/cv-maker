@@ -10,10 +10,10 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.v1.cv import router as cv_router
 from src.api.v1.index import router as index_router
-from src.logger import setup_default_logger
+from src.core.logger import setup_root_logger
 
 # Setup logging
-logger = setup_default_logger()
+logger = setup_root_logger()
 
 
 @asynccontextmanager

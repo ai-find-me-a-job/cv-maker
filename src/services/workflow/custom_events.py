@@ -1,5 +1,5 @@
 from llama_index.core.workflow import StartEvent, StopEvent, Event
-from src.cv_maker.workflow.models import Resume
+from .extraction_models import Resume
 
 
 class CVStartEvent(StartEvent):
@@ -12,6 +12,14 @@ class ExtractJobDescriptionEvent(Event):
 
 
 class GenerateResumeEvent(Event):
+    job_description: str
+    personal_info: str
+    skills: str
+    experiences: str
+    education: str
+
+
+class AskForCandidateInfoEvent(Event):
     job_description: str
 
 
