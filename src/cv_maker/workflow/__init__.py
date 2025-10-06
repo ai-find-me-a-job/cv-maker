@@ -5,6 +5,7 @@ from .custom_events import (
     GenerateResumeEvent,
     GeneratePDFEvent,
     ExtractJobDescriptionEvent,
+    AskForCandidateInfoEvent,
 )
 from llama_index.llms.google_genai import GoogleGenAI
 from src.config import (
@@ -33,18 +34,18 @@ class CVWorkflow(Workflow):
     @step
     async def start(
         self, event: CVStartEvent
-    ) -> ExtractJobDescriptionEvent | GenerateResumeEvent:
+    ) -> ExtractJobDescriptionEvent | AskForCandidateInfoEvent:
         if event.job_url:
             return ExtractJobDescriptionEvent(job_url=event.job_url)
         elif event.job_description:
-            return GenerateResumeEvent(job_description=event.job_description)
+            return AskForCandidateInfoEvent(job_description=event.job_description)
         else:
             raise ValueError("Either job_url or job_description must be provided.")
 
     @step
     async def extract_job_description(
         self, event: ExtractJobDescriptionEvent
-    ) -> GenerateResumeEvent:
+    ) -> AskForCandidateInfoEvent:
         self.logger.info(f"Extracting job description from URL: {event.job_url}")
 
         # Use Playwright scraper for better compatibility
@@ -68,13 +69,57 @@ class CVWorkflow(Workflow):
         # Use LLM to extract job description from the page content
         job_description = await self.llm.acomplete(
             JOB_EXTRACTION_PROMPT_TEMPLATE.format(
-                page_title=page_title, page_content=page_text
+                page_title=page_title, page_text=page_text
             )
         )
 
         job_description_text = job_description.text
 
-        return GenerateResumeEvent(job_description=job_description_text)
+        return AskForCandidateInfoEvent(job_description=job_description_text)
+
+    @step
+    async def ask_for_candidate_info(
+        self, event: AskForCandidateInfoEvent
+    ) -> GenerateResumeEvent:
+        self.logger.info("Asking for candidate information to tailor the resume")
+
+        query_engine = self.index.as_query_engine(
+            llm=self.llm, response_mode="tree_summarize"
+        )
+        personal_info = await query_engine.aquery(
+            """Try to find the maximum of personal information (name, phone, email, address, LinkedIn, GitHub, portfolio)"""
+        )
+        self.logger.debug(f"Extracted personal info: {personal_info}")
+
+        skills = await query_engine.aquery(
+            f"""List key skills that can be related to the job description below:
+            {event.job_description}
+            """
+        )
+        self.logger.debug(f"Extracted skills: {skills}")
+        experiences = await query_engine.aquery(
+            f"""List relevant experiences that can be related to the job description below, include the following details for each experience:
+            - Job Title
+            - Company Name
+            - Dates of Employment (Start and End)
+            - Location (City, State, Country or Remote)
+            - Bullet points describing responsibilities and achievements (try to quantify achievements when possible)
+            --------------
+            {event.job_description}
+            """
+        )
+        self.logger.debug(f"Extracted experiences: {experiences}")
+        education = await query_engine.aquery(
+            """List educational background such as degrees, certifications, and relevant coursework"""
+        )
+        self.logger.debug(f"Extracted education: {education}")
+        return GenerateResumeEvent(
+            job_description=event.job_description,
+            personal_info=str(personal_info),
+            skills=str(skills),
+            experiences=str(experiences),
+            education=str(education),
+        )
 
     @step
     async def generate_resume(self, event: GenerateResumeEvent) -> GeneratePDFEvent:
@@ -82,20 +127,21 @@ class CVWorkflow(Workflow):
             f"Starting resume generation for job: {event.job_description[:50]}..."
         )
 
-        query_engine = self.index.as_query_engine(
-            llm=self.llm, output_cls=Resume, response_mode="tree_summarize"
-        )
-
         prompt = RESUME_CREATION_PROMPT_TEMPLATE.format(
-            job_description=event.job_description
+            personal_info=event.personal_info,
+            skills=event.skills,
+            experiences=event.experiences,
+            education=event.education,
+            job_description=event.job_description,
         )
 
         self.logger.info("Querying index for resume generation")
-        response = await query_engine.aquery(prompt)
+        response = await self.llm.as_structured_llm(output_cls=Resume).acomplete(prompt)
 
         self.logger.info("Resume data generated successfully")
+
         # Extract the Resume object from the PydanticResponse
-        resume_data = response.response
+        resume_data = response.raw
         return GeneratePDFEvent(resume=resume_data)
 
     @step
@@ -116,12 +162,14 @@ class CVWorkflow(Workflow):
 
             return CVStopEvent(
                 resume=event.resume,
-                latex_content=event.latex_content,
+                latex_content=self.latex_generator.doc.dumps(),
                 pdf_path=pdf_path,
             )
         except Exception as e:
             self.logger.error(f"PDF generation failed: {e}")
             # Return without PDF path if generation fails
             return CVStopEvent(
-                resume=event.resume, latex_content=event.latex_content, pdf_path=""
+                resume=event.resume,
+                latex_content=self.latex_generator.doc.dumps(),
+                pdf_path="",
             )

@@ -13,6 +13,14 @@ class ExtractJobDescriptionEvent(Event):
 
 class GenerateResumeEvent(Event):
     job_description: str
+    personal_info: str
+    skills: str
+    experiences: str
+    education: str
+
+
+class AskForCandidateInfoEvent(Event):
+    job_description: str
 
 
 class GeneratePDFEvent(Event):

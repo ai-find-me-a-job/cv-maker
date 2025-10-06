@@ -13,19 +13,9 @@ class LaTeXGenerator:
 
     def __init__(self):
         self.logger = default_logger
+        self.doc: Document = self._initialize_document()
 
-    def generate_latex_doc(self, resume: Resume) -> Document:
-        """
-        Generate complete LaTeX document from Resume data.
-
-        Args:
-            resume: Resume model instance with all data
-
-        Returns:
-            Complete LaTeX document as Document object
-        """
-        self.logger.info("Starting LaTeX generation for resume using PyLaTeX")
-
+    def _initialize_document(self) -> Document:
         # Create document with geometry and basic setup
         doc = Document(geometry_options={"margin": "1cm"})
 
@@ -54,7 +44,20 @@ class LaTeXGenerator:
                 r"\titleformat{\section}{\Large\bfseries}{}{0em}{}[\titlerule\vspace{0.5ex}]"
             )
         )
+        return doc
 
+    def generate_latex_doc(self, resume: Resume) -> Document:
+        """
+        Generate complete LaTeX document from Resume data.
+
+        Args:
+            resume: Resume model instance with all data
+
+        Returns:
+            Complete LaTeX document as Document object
+        """
+        self.logger.info("Starting LaTeX generation for resume using PyLaTeX")
+        doc = self.doc
         # Generate content
         self._generate_personal_info(doc, resume)
         self._generate_experience(doc, resume.experience)
@@ -62,7 +65,7 @@ class LaTeXGenerator:
         self._generate_education(doc, resume.education)
 
         self.logger.info("LaTeX generation completed")
-
+        self.doc = doc
         return doc
 
     def _generate_personal_info(self, doc: Document, resume: Resume) -> None:
@@ -215,7 +218,6 @@ class LaTeXGenerator:
                 clean_tex=False,
             )
             pdf_path = f"{output_path}.pdf"
-
             self.logger.info(f"PDF generated successfully: {pdf_path}")
             return pdf_path
 
