@@ -17,3 +17,8 @@ dependencies = [
     "python-dotenv>=1.1.1",
     "fastapi[standard]>=0.118.0",
 ]
+
+[dependency-groups]
+dev = [
+    "llama-index-utils-workflow>=0.4.1",
+]
