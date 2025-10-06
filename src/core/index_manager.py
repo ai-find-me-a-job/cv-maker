@@ -9,6 +9,7 @@ from llama_index.embeddings.google_genai import GoogleGenAIEmbedding
 from pathlib import Path
 from src.config import GOOGLE_API_KEY, LLAMA_PARSER_API_KEY, STORAGE_DIR
 from src.logger import default_logger as logger
+from typing import Sequence
 
 
 class VectorIndexManager:
@@ -34,7 +35,7 @@ class VectorIndexManager:
         else:
             return VectorStoreIndex([], embed_model=self.embed_model)
 
-    def add_documents(self, file_paths: list[str | Path]) -> None:
+    def add_documents(self, file_paths: Sequence[str | Path]) -> None:
         parser = LlamaParse(  # type: ignore
             api_key=LLAMA_PARSER_API_KEY,  # type: ignore
             result_type=ResultType.MD,
