@@ -1,21 +1,3 @@
-GNU GENERAL PUBLIC LICENSE
-Version 3, 29 June 2007
-
-Copyright (C) 2025 AI Find Me A Job
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
                     GNU GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
 
@@ -115,12 +97,15 @@ distribution (with or without modification), making available to the
 public, and in some countries other activities as well.
 
   To "convey" a work means any kind of propagation that enables other
-parties to make or receive copies.  An interactive user interface
-displays "Appropriate Legal Notices" to the extent that it includes a
-convenient and prominently visible feature that (1) displays an
-appropriate copyright notice, and (2) tells the user that there is no
-warranty for the work (except to the extent that warranties are
-provided), and (3) tells users how to view a copy of this License.  If
+parties to make or receive copies.  Mere interaction with a user through
+a computer network, with no transfer of a copy, is not conveying.
+
+  An interactive user interface displays "Appropriate Legal Notices"
+to the extent that it includes a convenient and prominently visible
+feature that (1) displays an appropriate copyright notice, and (2)
+tells the user that there is no warranty for the work (except to the
+extent that warranties are provided), that licensees may convey the
+work under this License, and how to view a copy of this License.  If
 the interface presents a list of user commands or options, such as a
 menu, a prominent item in the list meets this criterion.
 
@@ -137,13 +122,14 @@ is widely used among developers working in that language.
 
   The "System Libraries" of an executable work include anything, other
 than the work as a whole, that (a) is included in the normal form of
-packaging a Component, but which is not part of that Component, and
-(b) serves only to enable use of the work with that Component, or to
-implement a Standard Interface for which an implementation is available
-to the public in source code form.  A "Component" is a major functional
-unit of a particular operating system (if any) on which the executable
-work runs, or a compiler used to produce the work, or an object code
-interpreter used to run it.
+packaging a Major Component, but which is not part of that Major
+Component, and (b) serves only to enable use of the work with that
+Major Component, or to implement a Standard Interface for which an
+implementation is available to the public in source code form.  A
+"Major Component", in this context, means a major essential component
+(kernel, window system, and so on) of the specific operating system
+(if any) on which the executable work runs, or a compiler used to
+produce the work, or an object code interpreter used to run it.
 
   The "Corresponding Source" for a work in object code form means all
 the source code needed to generate, install, and (for an executable
@@ -180,11 +166,11 @@ convey, without conditions so long as your license otherwise remains
 in force.  You may convey covered works to others for the sole purpose
 of having them make modifications exclusively for you, or provide you
 with facilities for running those works, provided that you comply with
-all the terms of this License in conveying all material for which you
-do not control copyright.  Those thus making or running the covered
-works for you must do so exclusively on your behalf, under your
-direction and control, on terms that prohibit them from making any
-copies of your copyrighted material outside their relationship with you.
+the terms of this License in conveying all material for which you do
+not control copyright.  Those thus making or running the covered works
+for you must do so exclusively on your behalf, under your direction
+and control, on terms that prohibit them from making any copies of
+your copyrighted material outside their relationship with you.
 
   Conveying under any other circumstances is permitted solely under
 the conditions stated below.  Sublicensing is not allowed; section 10
@@ -222,11 +208,11 @@ and you may offer support or warranty protection for a fee.
   5. Conveying Modified Source Versions.
 
   You may convey a work based on the Program, or the modifications to
-produce it from the Program, in source code form under the terms of
-section 4, provided that you also meet all of these conditions:
+produce it from the Program, in the form of source code under the
+terms of section 4, provided that you also meet all of these conditions:
 
-    a) The work must carry prominent notices stating that you have
-    modified it, and giving a relevant date.
+    a) The work must carry prominent notices stating that you modified
+    it, and giving a relevant date.
 
     b) The work must carry prominent notices stating that it is
     released under this License and any conditions added under section
@@ -289,15 +275,15 @@ in one of these ways:
     d) Convey the object code by offering access from a designated
     place (gratis or for a charge), and offer equivalent access to the
     Corresponding Source in the same way through the same place at no
-    further charge.  Recipients need not copy the Corresponding Source
-    along with the object code.  If the place to copy the object code is
-    a network server, the Corresponding Source may be on a different
-    server (operated by you or a third party) that supports equivalent
-    copying facilities, provided you maintain clear directions next to
-    the object code saying where to find the Corresponding Source.
-    Regardless of what server hosts the Corresponding Source, you
-    remain obligated to ensure that it is available for as long as
-    needed to satisfy these requirements.
+    further charge.  You need not require recipients to copy the
+    Corresponding Source along with the object code.  If the place to
+    copy the object code is a network server, the Corresponding Source
+    may be on a different server (operated by you or a third party)
+    that supports equivalent copying facilities, provided you maintain
+    clear directions next to the object code saying where to find the
+    Corresponding Source.  Regardless of what server hosts the
+    Corresponding Source, you remain obligated to ensure that it is
+    available for as long as needed to satisfy these requirements.
 
     e) Convey the object code using peer-to-peer transmission, provided
     you inform other peers where the object code and Corresponding
@@ -440,7 +426,7 @@ received notice of violation of this License (for any work) from that
 copyright holder, and you cure the violation prior to 30 days after
 your receipt of the notice.
 
-  Termination of your rights under this License does not terminate the
+  Termination of your rights under this section does not terminate the
 licenses of parties who have received copies or rights from you under
 this License.  If your rights have been terminated and not permanently
 reinstated, you do not qualify to receive new licenses for the same
@@ -634,7 +620,7 @@ copy of the Program in return for a fee.
 
                      END OF TERMS AND CONDITIONS
 
-            How to apply the GNU General Public License to your programs
+            How to Apply These Terms to Your New Programs
 
   If you develop a new program, and you want it to be of the greatest
 possible use to the public, the best way to achieve this is to make it
@@ -645,8 +631,8 @@ to attach them to the start of each source file to most effectively
 state the exclusion of warranty; and each file should have at least
 the "copyright" line and a pointer to where the full notice is found.
 
-    CV Maker - AI-powered resume generation tool
-    Copyright (C) 2025 AI Find Me A Job
+    <one line to give the program's name and a brief idea of what it does.>
+    Copyright (C) <year>  <name of author>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -666,7 +652,7 @@ Also add information on how to contact you by electronic and paper mail.
   If the program does terminal interaction, make it output a short
 notice like this when it starts in an interactive mode:
 
-    CV Maker  Copyright (C) 2025  AI Find Me A Job
+    <program>  Copyright (C) <year>  <name of author>
     This program comes with ABSOLUTELY NO WARRANTY; for details type `show w'.
     This is free software, and you are welcome to redistribute it
     under certain conditions; type `show c' for details.
@@ -685,4 +671,4 @@ into proprietary programs.  If your program is a subroutine library, you
 may consider it more useful to permit linking proprietary applications with
 the library.  If this is what you want to do, use the GNU Lesser General
 Public License instead of this License.  But first, please read
-<https://www.gnu.org/philosophy/why-not-lgpl.html>.
+<https://www.gnu.org/licenses/why-not-lgpl.html>.
