@@ -117,6 +117,16 @@ Generate a complete, professional resume that maximizes the applicant's chances 
 
 """
 
+RESUME_CREATION_PROMPT_TEMPLATE_WITH_FEEDBACK = """
+{resume_creation_prompt}
+--------------
+# Feedback
+The user provided the following feedback on the initial resume draft:
+{feedback}
+Based on this feedback, revise and improve the resume to better meet the user's expectations and the job requirements.
+#$ Your previous draft was:
+{resume_text}
+"""
 
 JOB_EXTRACTION_PROMPT_TEMPLATE = """
 # Task

@@ -1,4 +1,10 @@
-from llama_index.core.workflow import StartEvent, StopEvent, Event
+from llama_index.core.workflow import (
+    StartEvent,
+    StopEvent,
+    Event,
+    InputRequiredEvent,
+    HumanResponseEvent,
+)
 from .extraction_models import Resume
 
 
@@ -12,22 +18,33 @@ class ExtractJobDescriptionEvent(Event):
 
 
 class GenerateResumeEvent(Event):
-    job_description: str
-    personal_info: str
-    skills: str
-    experiences: str
-    education: str
+    ...
+    # personal_info: str
+    # skills: str
+    # experiences: str
+    # education: str
 
 
-class AskForCandidateInfoEvent(Event):
-    job_description: str
+class AskForCandidateInfoEvent(Event): ...
 
 
 class GeneratePDFEvent(Event):
     resume: Resume
 
 
+class AskForCVReviewEvent(InputRequiredEvent):
+    latex_content: str
+    pdf_path: str
+
+
+class CVReviewResponseEvent(HumanResponseEvent):
+    approve: bool
+    feedback: str | None = None
+
+
+class FinishWorkFlowEvent(Event): ...
+
+
 class CVStopEvent(StopEvent):
     resume: Resume
     latex_content: str
-    pdf_path: str

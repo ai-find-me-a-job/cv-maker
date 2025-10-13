@@ -1,4 +1,4 @@
-from llama_index.core.workflow import Workflow, step
+from llama_index.core.workflow import Workflow, step, Context
 from .custom_events import (
     CVStartEvent,
     CVStopEvent,
@@ -6,6 +6,9 @@ from .custom_events import (
     GeneratePDFEvent,
     ExtractJobDescriptionEvent,
     AskForCandidateInfoEvent,
+    AskForCVReviewEvent,
+    CVReviewResponseEvent,
+    FinishWorkFlowEvent,
 )
 from llama_index.llms.google_genai import GoogleGenAI
 from src.core.config import (
@@ -19,7 +22,11 @@ import logging
 from .extraction_models import Resume
 from .latex_generator import LaTeXGenerator
 from src.core.web_scraper import scrape_job_url
-from .prompts import RESUME_CREATION_PROMPT_TEMPLATE, JOB_EXTRACTION_PROMPT_TEMPLATE
+from .prompts import (
+    RESUME_CREATION_PROMPT_TEMPLATE,
+    RESUME_CREATION_PROMPT_TEMPLATE_WITH_FEEDBACK,
+    JOB_EXTRACTION_PROMPT_TEMPLATE,
+)
 
 
 class CVWorkflow(Workflow):
@@ -28,23 +35,23 @@ class CVWorkflow(Workflow):
     )
     index_manager = VectorIndexManager()
     index = index_manager.get_index()
-    latex_generator = LaTeXGenerator()
     logger = logging.getLogger("cv_workflow")
 
     @step
     async def start(
-        self, event: CVStartEvent
+        self, ctx: Context, event: CVStartEvent
     ) -> ExtractJobDescriptionEvent | AskForCandidateInfoEvent:
         if event.job_url:
             return ExtractJobDescriptionEvent(job_url=event.job_url)
         elif event.job_description:
-            return AskForCandidateInfoEvent(job_description=event.job_description)
+            await ctx.store.set("job_description", event.job_description)
+            return AskForCandidateInfoEvent()
         else:
             raise ValueError("Either job_url or job_description must be provided.")
 
     @step
     async def extract_job_description(
-        self, event: ExtractJobDescriptionEvent
+        self, ctx: Context, event: ExtractJobDescriptionEvent
     ) -> AskForCandidateInfoEvent:
         self.logger.info(f"Extracting job description from URL: {event.job_url}")
 
@@ -73,15 +80,16 @@ class CVWorkflow(Workflow):
             )
         )
 
-        job_description_text = job_description.text
+        await ctx.store.set("job_description", job_description.text)
 
-        return AskForCandidateInfoEvent(job_description=job_description_text)
+        return AskForCandidateInfoEvent()
 
     @step
     async def ask_for_candidate_info(
-        self, event: AskForCandidateInfoEvent
+        self, ctx: Context, event: AskForCandidateInfoEvent
     ) -> GenerateResumeEvent:
         self.logger.info("Asking for candidate information to tailor the resume")
+        job_description = await ctx.store.get("job_description")
 
         query_engine = self.index.as_query_engine(
             llm=self.llm, response_mode="tree_summarize"
@@ -93,7 +101,7 @@ class CVWorkflow(Workflow):
 
         skills = await query_engine.aquery(
             f"""List key skills that can be related to the job description below:
-            {event.job_description}
+            {job_description}
             """
         )
         self.logger.debug(f"Extracted skills: {skills}")
@@ -105,7 +113,7 @@ class CVWorkflow(Workflow):
             - Location (City, State, Country or Remote)
             - Bullet points describing responsibilities and achievements (try to quantify achievements when possible)
             --------------
-            {event.job_description}
+            {job_description}
             """
         )
         self.logger.debug(f"Extracted experiences: {experiences}")
@@ -113,27 +121,42 @@ class CVWorkflow(Workflow):
             """List educational background such as degrees, certifications, and relevant coursework"""
         )
         self.logger.debug(f"Extracted education: {education}")
-        return GenerateResumeEvent(
-            job_description=event.job_description,
-            personal_info=str(personal_info),
-            skills=str(skills),
-            experiences=str(experiences),
-            education=str(education),
-        )
+
+        await ctx.store.set("personal_info", str(personal_info))
+        await ctx.store.set("skills", str(skills))
+        await ctx.store.set("experiences", str(experiences))
+        await ctx.store.set("education", str(education))
+        return GenerateResumeEvent()
 
     @step
-    async def generate_resume(self, event: GenerateResumeEvent) -> GeneratePDFEvent:
-        self.logger.info(
-            f"Starting resume generation for job: {event.job_description[:50]}..."
-        )
+    async def generate_resume(
+        self, ctx: Context, event: GenerateResumeEvent
+    ) -> GeneratePDFEvent:
+        job_description = await ctx.store.get("job_description")
+        personal_info = await ctx.store.get("personal_info")
+        skills = await ctx.store.get("skills")
+        experiences = await ctx.store.get("experiences")
+        education = await ctx.store.get("education")
 
-        prompt = RESUME_CREATION_PROMPT_TEMPLATE.format(
-            personal_info=event.personal_info,
-            skills=event.skills,
-            experiences=event.experiences,
-            education=event.education,
-            job_description=event.job_description,
+        self.logger.info(
+            f"Starting resume generation for job: {job_description[:50]}..."
         )
+        prompt = RESUME_CREATION_PROMPT_TEMPLATE.format(
+            personal_info=personal_info,
+            skills=skills,
+            experiences=experiences,
+            education=education,
+            job_description=job_description,
+        )
+        feedback = await ctx.store.get("feedback", default="")
+        if feedback:
+            self.logger.info("Incorporating user feedback into resume generation")
+            previous_resume = await ctx.store.get("resume", default="")
+            prompt = RESUME_CREATION_PROMPT_TEMPLATE_WITH_FEEDBACK.format(
+                resume_creation_prompt=prompt,
+                feedback=feedback,
+                resume_text=previous_resume,
+            )
 
         self.logger.info("Querying index for resume generation")
         response = await self.llm.as_structured_llm(output_cls=Resume).acomplete(prompt)
@@ -142,10 +165,13 @@ class CVWorkflow(Workflow):
 
         # Extract the Resume object from the PydanticResponse
         resume_data = response.raw
+        await ctx.store.set("resume", resume_data)
         return GeneratePDFEvent(resume=resume_data)
 
     @step
-    async def generate_pdf(self, event: GeneratePDFEvent) -> CVStopEvent:
+    async def generate_pdf(
+        self, ctx: Context, event: GeneratePDFEvent
+    ) -> AskForCVReviewEvent:
         self.logger.info("Starting PDF generation")
 
         # Generate timestamp for unique filename
@@ -154,22 +180,37 @@ class CVWorkflow(Workflow):
         with open(considerations_output_path, "w", encoding="utf-8") as f:
             f.write(event.resume.considerations or "")
 
-        try:
-            pdf_path = self.latex_generator.generate_pdf(
-                event.resume, resume_output_path, clean_temp_files=False
-            )
-            self.logger.info(f"PDF generated successfully: {pdf_path}")
+        latex_generator = LaTeXGenerator()
 
-            return CVStopEvent(
-                resume=event.resume,
-                latex_content=self.latex_generator.doc.dumps(),
-                pdf_path=pdf_path,
-            )
-        except Exception as e:
-            self.logger.error(f"PDF generation failed: {e}")
-            # Return without PDF path if generation fails
-            return CVStopEvent(
-                resume=event.resume,
-                latex_content=self.latex_generator.doc.dumps(),
-                pdf_path="",
-            )
+        pdf_path = latex_generator.generate_pdf(
+            event.resume, resume_output_path, clean_temp_files=True
+        )
+        latex_content = latex_generator.doc.dumps()
+        await ctx.store.set("latex_content", latex_content)
+
+        self.logger.info(f"PDF generated successfully: {pdf_path}")
+
+        return AskForCVReviewEvent(
+            latex_content=latex_content,
+            pdf_path=pdf_path,
+        )
+
+    @step
+    async def analyze_review_answer(
+        self, ctx: Context, event: CVReviewResponseEvent
+    ) -> FinishWorkFlowEvent:  # | GenerateResumeEvent:
+        if event.approve:
+            self.logger.info("CV approved by the user")
+            return FinishWorkFlowEvent()
+        else:
+            await ctx.store.set("feedback", event.feedback)
+            return GenerateResumeEvent()
+
+    @step
+    async def stop(self, ctx: Context, event: FinishWorkFlowEvent) -> CVStopEvent:
+        resume = await ctx.store.get("resume")
+        latex_content = await ctx.store.get("latex_content")
+        return CVStopEvent(
+            resume=resume,
+            latex_content=latex_content,
+        )

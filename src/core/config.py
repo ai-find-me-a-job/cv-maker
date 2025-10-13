@@ -17,6 +17,6 @@ STORAGE_DIR = ROOT_DIR / "data" / ".storage"
 
 SCRAPPING_PAGE_CONTENT_LIMIT = 15000  # characters
 
-GEMINI_TEMPERATURE = float(os.getenv("GEMINI_TEMPERATURE") or 0.1)
+GEMINI_TEMPERATURE = float(os.getenv("GEMINI_TEMPERATURE") or 0.7)
 
 GEMINI_MODEL = os.getenv("GEMINI_MODEL") or "gemini-2.0-flash"
