@@ -16,6 +16,7 @@ dependencies = [
     "pylatex>=1.4.2",
     "python-dotenv>=1.1.1",
     "fastapi[standard]>=0.118.0",
+    "redis[hiredis]>=6.4.0",
 ]
 
 [dependency-groups]
