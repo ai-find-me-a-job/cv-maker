@@ -9,6 +9,15 @@ class JobUrlRequest(BaseModel):
     job_url: str
 
 
-class CVWorkflowResponse(BaseModel):
+class StartCVWorkflowResponse(BaseModel):
+    status: str
+    workflow_id: str
     latex_content: str
-    pdf_path: str | None = None
+
+
+class ContinueCVWorkflowResponse(StartCVWorkflowResponse): ...
+
+
+class ContinueCVWorkflowRequest(BaseModel):
+    approve: bool
+    feedback: str | None = None

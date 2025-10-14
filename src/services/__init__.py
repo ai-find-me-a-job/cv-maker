@@ -1,14 +1,111 @@
-from .workflow import CVWorkflow, CVStopEvent
-from src.core.index_manager import VectorIndexManager
+import json
 from pathlib import Path
+from uuid import uuid4
+
+from llama_index.core.workflow import Context
+from redis.asyncio import Redis
+
+from src.core.config import REDIS_URL
+from src.core.exceptions import StorageError, WorkFlowError
+from src.core.index_manager import VectorIndexManager
+from src.models.cv import ContinueCVWorkflowResponse, StartCVWorkflowResponse
+
+from .workflow import CVStopEvent, CVWorkflow
+from .workflow.custom_events import AskForCVReviewEvent, CVReviewResponseEvent
 
 
-async def run_cv_workflow(
+async def start_cv_workflow(
     job_url: str | None = None, job_description: str | None = None
-) -> CVStopEvent:
-    workflow = CVWorkflow()
-    result = await workflow.run(job_url=job_url, job_description=job_description)
-    return result
+) -> StartCVWorkflowResponse:
+    """
+    Asynchronously starts a CV workflow based on a provided job URL or job description.
+
+    Parameters:
+        job_url (str | None): The URL of the job posting. If provided, it will be used to inform the workflow.
+            Defaults to None.
+        job_description (str | None): A textual description of the job. If provided, it will be used to inform
+            the workflow. Defaults to None.
+
+    Returns:
+        StartCVWorkflowResponse: An object containing the status ("review_needed"), a unique workflow ID,
+            and the LaTeX content for review.
+
+    Raises:
+        WorkFlowError: If the workflow completes without triggering an AskForCVReviewEvent.
+    """
+    redis_client = Redis.from_url(REDIS_URL, decode_responses=True)
+    workflow = CVWorkflow(timeout=600)
+
+    workflow_handler = workflow.run(job_url=job_url, job_description=job_description)
+    async for event in workflow_handler.stream_events():
+        if isinstance(event, AskForCVReviewEvent):
+            workflow_id = str(uuid4())
+            workflow_ctx = workflow_handler.ctx.to_dict()
+            await redis_client.set(
+                name=f"cv_workflow:{workflow_id}", value=json.dumps(workflow_ctx)
+            )
+            return StartCVWorkflowResponse(
+                status="review_needed",
+                workflow_id=workflow_id,
+                latex_content=event.latex_content,
+            )
+
+    raise WorkFlowError("CV Workflow did not ask for review.")
+
+
+async def continue_cv_workflow(
+    workflow_id: str, approve: bool, feedback: str | None = None
+) -> ContinueCVWorkflowResponse:
+    """
+    Continues a CV workflow by processing a review response and advancing the workflow state.
+    This function retrieves the stored workflow context from Redis, resumes the CVWorkflow,
+    sends a CVReviewResponseEvent based on the approval and feedback, and streams events
+    until completion or a review is needed again. It handles cleanup of the stored context
+    upon completion.
+    Args:
+        workflow_id (str): The unique identifier of the CV workflow to continue.
+        approve (bool): Indicates whether the CV is approved (True) or not (False).
+        feedback (str | None, optional): Additional feedback for the review. Defaults to None.
+    Returns:
+        ContinueCVWorkflowResponse: An object containing the status of the workflow continuation,
+        the workflow ID, and the LaTeX content of the CV. Status can be "completed" or "review_needed".
+    Raises:
+        StorageError: If no workflow is found with the given workflow_id.
+        WorkFlowError: If the CV workflow does not complete properly.
+    """
+
+    redis_client = Redis.from_url(REDIS_URL, decode_responses=True)
+    workflow_ctx = await redis_client.get(f"cv_workflow:{workflow_id}")
+    if not workflow_ctx:
+        raise StorageError(f"No workflow found with ID: {workflow_id}")
+
+    workflow = CVWorkflow(timeout=600)
+    ctx = Context.from_dict(workflow=workflow, data=json.loads(workflow_ctx))
+    workflow_handler = workflow.run(ctx=ctx)
+    workflow_handler.ctx.send_event(
+        CVReviewResponseEvent(approve=approve, feedback=feedback)
+    )
+    async for event in workflow_handler.stream_events():
+        if isinstance(event, CVStopEvent):
+            # Clean up the stored context
+            await redis_client.delete(f"cv_workflow:{workflow_id}")
+            return ContinueCVWorkflowResponse(
+                status="completed",
+                workflow_id=workflow_id,
+                latex_content=event.latex_content,
+            )
+        elif isinstance(event, AskForCVReviewEvent):
+            workflow_ctx = workflow_handler.ctx.to_dict()
+            await redis_client.set(
+                name=f"cv_workflow:{workflow_id}", value=json.dumps(workflow_ctx)
+            )
+            return ContinueCVWorkflowResponse(
+                status="review_needed",
+                workflow_id=workflow_id,
+                latex_content=event.latex_content,
+            )
+
+    raise WorkFlowError("CV Workflow did not complete properly.")
 
 
 async def add_files_to_index(file_paths: list[str | Path]) -> list[str]:
