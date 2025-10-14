@@ -1,6 +1,6 @@
 [project]
 name = "cv-maker"
-version = "0.1.0"
+version = "0.2.0"
 description = "AI Agentic Workflow to build a CV"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -20,6 +20,4 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = [
-    "llama-index-utils-workflow>=0.4.1",
-]
+dev = ["llama-index-utils-workflow>=0.4.1"]
