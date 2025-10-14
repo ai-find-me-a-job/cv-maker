@@ -17,12 +17,7 @@ class ExtractJobDescriptionEvent(Event):
     job_url: str
 
 
-class GenerateResumeEvent(Event):
-    ...
-    # personal_info: str
-    # skills: str
-    # experiences: str
-    # education: str
+class GenerateResumeEvent(Event): ...
 
 
 class AskForCandidateInfoEvent(Event): ...
@@ -34,7 +29,6 @@ class GeneratePDFEvent(Event):
 
 class AskForCVReviewEvent(InputRequiredEvent):
     latex_content: str
-    pdf_path: str
 
 
 class CVReviewResponseEvent(HumanResponseEvent):
