@@ -11,6 +11,7 @@ from .extraction_models import Resume
 class CVStartEvent(StartEvent):
     job_url: str | None = None
     job_description: str | None = None
+    language: str = "en"
 
 
 class ExtractJobDescriptionEvent(Event):

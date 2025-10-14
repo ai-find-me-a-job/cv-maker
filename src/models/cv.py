@@ -9,6 +9,10 @@ class JobUrlRequest(BaseModel):
     job_url: str
 
 
+class SupportedLanguagesResponse(BaseModel):
+    languages: dict[str, str]  # language_code -> display_name
+
+
 class StartCVWorkflowResponse(BaseModel):
     status: str
     workflow_id: str

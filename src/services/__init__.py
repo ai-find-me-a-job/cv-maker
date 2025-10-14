@@ -15,7 +15,7 @@ from .workflow.custom_events import AskForCVReviewEvent, CVReviewResponseEvent
 
 
 async def start_cv_workflow(
-    job_url: str | None = None, job_description: str | None = None
+    job_url: str | None = None, job_description: str | None = None, language: str = "en"
 ) -> StartCVWorkflowResponse:
     """
     Asynchronously starts a CV workflow based on a provided job URL or job description.
@@ -36,7 +36,9 @@ async def start_cv_workflow(
     redis_client = Redis.from_url(REDIS_URL, decode_responses=True)
     workflow = CVWorkflow(timeout=600)
 
-    workflow_handler = workflow.run(job_url=job_url, job_description=job_description)
+    workflow_handler = workflow.run(
+        job_url=job_url, job_description=job_description, language=language
+    )
     async for event in workflow_handler.stream_events():
         if isinstance(event, AskForCVReviewEvent):
             workflow_id = str(uuid4())
