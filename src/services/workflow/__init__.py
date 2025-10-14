@@ -1,31 +1,34 @@
-from llama_index.core.workflow import Workflow, step, Context
+import logging
+
+from llama_index.core.workflow import Context, Workflow, step
+from llama_index.llms.google_genai import GoogleGenAI
+
+from src.core.config import (
+    GEMINI_MODEL,
+    GEMINI_TEMPERATURE,
+    GOOGLE_API_KEY,
+    SCRAPPING_PAGE_CONTENT_LIMIT,
+)
+from src.core.index_manager import VectorIndexManager
+from src.core.web_scraper import scrape_job_url
+
 from .custom_events import (
-    CVStartEvent,
-    CVStopEvent,
-    GenerateResumeEvent,
-    GeneratePDFEvent,
-    ExtractJobDescriptionEvent,
     AskForCandidateInfoEvent,
     AskForCVReviewEvent,
     CVReviewResponseEvent,
+    CVStartEvent,
+    CVStopEvent,
+    ExtractJobDescriptionEvent,
     FinishWorkFlowEvent,
+    GeneratePDFEvent,
+    GenerateResumeEvent,
 )
-from llama_index.llms.google_genai import GoogleGenAI
-from src.core.config import (
-    GOOGLE_API_KEY,
-    SCRAPPING_PAGE_CONTENT_LIMIT,
-    GEMINI_TEMPERATURE,
-    GEMINI_MODEL,
-)
-from src.core.index_manager import VectorIndexManager
-import logging
 from .extraction_models import Resume
 from .latex_generator import LaTeXGenerator
-from src.core.web_scraper import scrape_job_url
 from .prompts import (
+    JOB_EXTRACTION_PROMPT_TEMPLATE,
     RESUME_CREATION_PROMPT_TEMPLATE,
     RESUME_CREATION_PROMPT_TEMPLATE_WITH_FEEDBACK,
-    JOB_EXTRACTION_PROMPT_TEMPLATE,
 )
 
 
@@ -190,15 +193,12 @@ class CVWorkflow(Workflow):
 
         self.logger.info(f"PDF generated successfully: {pdf_path}")
 
-        return AskForCVReviewEvent(
-            latex_content=latex_content,
-            pdf_path=pdf_path,
-        )
+        return AskForCVReviewEvent(latex_content=latex_content)
 
     @step
     async def analyze_review_answer(
         self, ctx: Context, event: CVReviewResponseEvent
-    ) -> FinishWorkFlowEvent:  # | GenerateResumeEvent:
+    ) -> FinishWorkFlowEvent | GenerateResumeEvent:
         if event.approve:
             self.logger.info("CV approved by the user")
             return FinishWorkFlowEvent()
