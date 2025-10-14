@@ -9,30 +9,30 @@ An AI-powered application that generates tailored CVs/resumes based on job descr
 
 ## 🌟 Features
 
-- **Intelligent Job Analysis**: Automatically extracts job requirements from URLs or descriptions
-- **Candidate Information Extraction**: Uses vector search to intelligently query candidate data
-- **AI-Powered Resume Generation**: Creates tailored resumes using Google Gemini LLM
-- **Professional PDF Output**: Generates LaTeX-formatted PDFs with proper styling
-- **Strategic Optimization**: Matches keywords and requirements for ATS compatibility
-- **RESTful API**: FastAPI-based endpoints for easy integration
-- **Async Workflows**: Event-driven architecture for optimal performance
+- **🔄 Human-in-the-Loop**: Interactive workflow with candidate experiences and resume review
+- **🧠 Intelligent Job Analysis**: Automatically extracts job requirements from URLs or descriptions
+- **🤖 AI-Powered Resume Generation**: Creates tailored resumes using Google Gemini LLM
+- **📄 Professional PDF Output**: Generates LaTeX-formatted PDFs with proper styling
+- **🎯 Strategic Optimization**: Matches keywords and requirements for ATS compatibility
+- **🚀 RESTful API**: FastAPI-based endpoints for easy integration
+- **⚡ Async Workflows**: Event-driven architecture for optimal performance
 
 ## 🏗️ Architecture
 
-The application uses an event-driven workflow architecture powered by LlamaIndex:
+The application uses an event-driven workflow architecture powered by LlamaIndex with human interaction:
 
 ```
-Job URL/Description → Web Scraping → Candidate Query → Resume Generation → PDF Export
+Job URL/Description → Web Scraping → Interactive Candidate Queries → Resume Generation → Human Review → PDF Export
 ```
 
 ### Core Components
 
-- **Workflow Engine**: LlamaIndex workflows with async event handling
+- **Interactive Workflow Engine**: LlamaIndex workflows with human-in-the-loop interactions
 - **Web Scraper**: Playwright-based job posting extraction
 - **Vector Search**: Intelligent candidate information retrieval
 - **LLM Integration**: Google Gemini for text generation and analysis
 - **Document Generation**: PyLaTeX for professional PDF creation
-- **API Layer**: FastAPI with automatic documentation
+- **API Layer**: FastAPI with automatic documentation and interactive endpoints
 
 ## 🚀 Quick Start
 
@@ -116,7 +116,7 @@ The API will be available at:
 ### Generate CV from Job URL
 
 ```bash
-curl -X POST "http://localhost:8000/cv/generate/from-url" \
+curl -X POST "http://localhost:8000/cv/run/from-url" \
      -H "Content-Type: application/json" \
      -d '{"job_url": "https://example.com/job-posting"}'
 ```
@@ -124,9 +124,17 @@ curl -X POST "http://localhost:8000/cv/generate/from-url" \
 ### Generate CV from Job Description
 
 ```bash
-curl -X POST "http://localhost:8000/cv/generate/from-description" \
+curl -X POST "http://localhost:8000/cv/run/from-description" \
+     -H "Content-Type: text/plain" \
+     -d "We are seeking a Senior Python Developer..."
+```
+
+### Continue CV Workflow
+
+```bash
+curl -X POST "http://localhost:8000/cv/continue/{workflow_id}" \
      -H "Content-Type: application/json" \
-     -d '{"job_description": "We are seeking a Senior Python Developer..."}'
+     -d '{"approve": true, "feedback": "Looks good, please proceed"}'
 ```
 
 ### Add Resume Files to Index
@@ -137,7 +145,13 @@ curl -X POST "http://localhost:8000/cv/index/add-files" \
      -F "files=@cover_letter.docx"
 ```
 
-## 🗂️ Project Structure
+### Health Check
+
+```bash
+curl -X GET "http://localhost:8000/health"
+```
+
+## 📂 Project Structure
 
 ```
 cv-maker/
@@ -233,13 +247,16 @@ This project is licensed under the GPL v3 - see the [LICENSE](LICENSE) file for 
 
 ## 🗺️ Roadmap
 
-- [ ] Human in the loop for preview and approval
+- [x] **Human-in-the-loop for interactive resume creation** ✅
+- [ ] Web interface for non-technical users
+- [ ] Resume templates and styling options
 - [ ] Multi-language support
 - [ ] Additional output formats (Word, HTML)
 - [ ] Resume templates and styling options
 - [ ] Batch processing capabilities
 - [ ] Web interface for non-technical users
 - [ ] Integration with job boards and LinkedIn
+- [ ] Mobile app for on-the-go resume generation
 
 ---
 
