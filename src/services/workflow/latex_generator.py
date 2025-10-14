@@ -11,18 +11,54 @@ import logging
 class LaTeXGenerator:
     """Generate LaTeX code from Resume model data using PyLaTeX."""
 
-    def __init__(self):
+    # Language-specific text dictionary
+    LANGUAGE_TEXTS = {
+        "en": {
+            "sections": {
+                "experience": "Experience",
+                "skills": "Skills",
+                "education": "Education"
+            },
+            "labels": {
+                "technical": "Technical:",
+                "languages": "Languages:",
+                "soft_skills": "Soft Skills:"
+            }
+        },
+        "pt": {
+            "sections": {
+                "experience": "Experiência",
+                "skills": "Habilidades",
+                "education": "Educação"
+            },
+            "labels": {
+                "technical": "Técnicas:",
+                "languages": "Idiomas:",
+                "soft_skills": "Habilidades Comportamentais:"
+            }
+        }
+    }
+
+    def __init__(self, language: str = "en"):
         self.logger = logging.getLogger(__name__)
+        self.language = language
+        # Get text dictionary for the current language, fallback to English
+        self.texts = self.LANGUAGE_TEXTS.get(language, self.LANGUAGE_TEXTS["en"])
         self.doc: Document = self._initialize_document()
 
     def _initialize_document(self) -> Document:
         # Create document with geometry and basic setup
         doc = Document(geometry_options={"margin": "1cm"})
 
-        # Add packages
+        # Add packages based on language
         doc.packages.append(Package("inputenc", options=["utf8"]))
         doc.packages.append(Package("fontenc", options=["T1"]))
-        doc.packages.append(Package("babel", options=["english"]))
+
+        if self.language == "pt":
+            doc.packages.append(Package("babel", options=["brazilian", "english"]))
+        else:
+            doc.packages.append(Package("babel", options=["english"]))
+
         doc.packages.append(Package("parskip"))
         doc.packages.append(Package("hyperref"))
         doc.packages.append(Package("titlesec"))
@@ -112,7 +148,8 @@ class LaTeXGenerator:
         if not experiences:
             return
 
-        with doc.create(Section("Experience")):
+        section_title = self.texts["sections"]["experience"]
+        with doc.create(Section(section_title)):
             for exp in experiences:
                 # Format dates
                 date_range = exp.start_date
@@ -142,28 +179,36 @@ class LaTeXGenerator:
         """Generate skills section."""
         self.logger.debug("Generating skills section")
 
-        with doc.create(Section("Skills")):
+        section_title = self.texts["sections"]["skills"]
+        with doc.create(Section(section_title)):
             doc.append(NoEscape(r"\begin{itemize}"))
             if skills.technical_skills:
+                technical_label = self.texts["labels"]["technical"]
                 technical_skills_str = ", ".join(
                     [self._escape_latex(skill) for skill in skills.technical_skills]
                 )
                 doc.append(
-                    NoEscape(f"\\item \\textbf{{Technical:}} {technical_skills_str}")
+                    NoEscape(
+                        f"\\item \\textbf{{{technical_label}}} {technical_skills_str}"
+                    )
                 )
 
             if skills.languages:
+                languages_label = self.texts["labels"]["languages"]
                 languages_str = ", ".join(
                     [self._escape_latex(lang) for lang in skills.languages]
                 )
-                doc.append(NoEscape(f"\\item \\textbf{{Languages:}} {languages_str}"))
+                doc.append(
+                    NoEscape(f"\\item \\textbf{{{languages_label}}} {languages_str}")
+                )
 
             if skills.soft_skills:
+                soft_label = self.texts["labels"]["soft_skills"]
                 soft_skills_str = ", ".join(
                     [self._escape_latex(skill) for skill in skills.soft_skills]
                 )
                 doc.append(
-                    NoEscape(f"\\item \\textbf{{Soft Skills:}} {soft_skills_str}")
+                    NoEscape(f"\\item \\textbf{{{soft_label}}} {soft_skills_str}")
                 )
             doc.append(NoEscape(r"\end{itemize}"))
 
@@ -174,7 +219,8 @@ class LaTeXGenerator:
         if not education:
             return
 
-        with doc.create(Section("Education")):
+        section_title = self.texts["sections"]["education"]
+        with doc.create(Section(section_title)):
             for edu in education:
                 # Create subsection with institution
                 subsection_title = NoEscape(

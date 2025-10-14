@@ -11,6 +11,7 @@ An AI-powered application that generates tailored CVs/resumes based on job descr
 
 - **🔄 Human-in-the-Loop**: Interactive workflow with candidate experiences and resume review
 - **🧠 Intelligent Job Analysis**: Automatically extracts job requirements from URLs or descriptions
+- **🌍 Multi-Language Support**: Generate resumes in English or Portuguese (Brazilian)
 - **🤖 AI-Powered Resume Generation**: Creates tailored resumes using Google Gemini LLM
 - **📄 Professional PDF Output**: Generates LaTeX-formatted PDFs with proper styling
 - **🎯 Strategic Optimization**: Matches keywords and requirements for ATS compatibility
@@ -113,10 +114,16 @@ The API will be available at:
 
 ## 📖 API Usage
 
+### Get Supported Languages
+
+```bash
+curl -X GET "http://localhost:8000/cv/languages"
+```
+
 ### Generate CV from Job URL
 
 ```bash
-curl -X POST "http://localhost:8000/cv/run/from-url" \
+curl -X POST "http://localhost:8000/cv/run/from-url/en" \
      -H "Content-Type: application/json" \
      -d '{"job_url": "https://example.com/job-posting"}'
 ```
@@ -124,7 +131,7 @@ curl -X POST "http://localhost:8000/cv/run/from-url" \
 ### Generate CV from Job Description
 
 ```bash
-curl -X POST "http://localhost:8000/cv/run/from-description" \
+curl -X POST "http://localhost:8000/cv/run/from-description/pt" \
      -H "Content-Type: text/plain" \
      -d "We are seeking a Senior Python Developer..."
 ```
@@ -248,9 +255,9 @@ This project is licensed under the GPL v3 - see the [LICENSE](LICENSE) file for 
 ## 🗺️ Roadmap
 
 - [x] **Human-in-the-loop for interactive resume creation** ✅
+- [x] **Multi-language support** ✅
 - [ ] Web interface for non-technical users
 - [ ] Resume templates and styling options
-- [ ] Multi-language support
 - [ ] Additional output formats (Word, HTML)
 - [ ] Resume templates and styling options
 - [ ] Batch processing capabilities

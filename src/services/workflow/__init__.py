@@ -8,6 +8,7 @@ from src.core.config import (
     GEMINI_TEMPERATURE,
     GOOGLE_API_KEY,
     SCRAPPING_PAGE_CONTENT_LIMIT,
+    SUPPORTED_LANGUAGES,
 )
 from src.core.index_manager import VectorIndexManager
 from src.core.web_scraper import scrape_job_url
@@ -44,6 +45,7 @@ class CVWorkflow(Workflow):
     async def start(
         self, ctx: Context, event: CVStartEvent
     ) -> ExtractJobDescriptionEvent | AskForCandidateInfoEvent:
+        await ctx.store.set("language", event.language)
         if event.job_url:
             return ExtractJobDescriptionEvent(job_url=event.job_url)
         elif event.job_description:
@@ -144,7 +146,12 @@ class CVWorkflow(Workflow):
         self.logger.info(
             f"Starting resume generation for job: {job_description[:50]}..."
         )
+        language = await ctx.store.get("language", default="en")
+
+        # Determine language instruction
+        language_instruction = SUPPORTED_LANGUAGES.get(language, "English")
         prompt = RESUME_CREATION_PROMPT_TEMPLATE.format(
+            language=language_instruction,
             personal_info=personal_info,
             skills=skills,
             experiences=experiences,
@@ -168,6 +175,9 @@ class CVWorkflow(Workflow):
 
         # Extract the Resume object from the PydanticResponse
         resume_data = response.raw
+        if resume_data is None:
+            raise ValueError("Failed to generate resume data from LLM response")
+
         await ctx.store.set("resume", resume_data)
         return GeneratePDFEvent(resume=resume_data)
 
@@ -176,6 +186,7 @@ class CVWorkflow(Workflow):
         self, ctx: Context, event: GeneratePDFEvent
     ) -> AskForCVReviewEvent:
         self.logger.info("Starting PDF generation")
+        language = await ctx.store.get("language", default="en")
 
         # Generate timestamp for unique filename
         resume_output_path = "output/resume"
@@ -183,7 +194,7 @@ class CVWorkflow(Workflow):
         with open(considerations_output_path, "w", encoding="utf-8") as f:
             f.write(event.resume.considerations or "")
 
-        latex_generator = LaTeXGenerator()
+        latex_generator = LaTeXGenerator(language=language)
 
         pdf_path = latex_generator.generate_pdf(
             event.resume, resume_output_path, clean_temp_files=True
