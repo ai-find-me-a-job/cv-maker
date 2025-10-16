@@ -189,12 +189,6 @@ docker-compose ps
 See [Docker Deployment Guide](docs/docker-deployment.md) for advanced configuration.
 
 
-### Docker Compose Files
-
-| File | Mode | Features |
-|------|------|----------|
-| `docker-compose.yml` | Production | 4 workers, optimized performance |
-| `docker-compose.dev.yml` | Development | Hot reload, source code mounting, single worker |
 
 ### Useful Commands
 
