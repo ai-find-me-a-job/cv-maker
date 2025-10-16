@@ -37,43 +37,71 @@ Job URL/Description → Web Scraping → Interactive Candidate Queries → Resum
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### Using Docker (Recommended)
 
-- Python 3.12+
-- UV package manager (recommended) or pip
-- LaTeX distribution (MiKTeX or TeX Live) for PDF generation
-- Google API key for Gemini LLM
+The easiest way to run CV Maker is with Docker Compose, which handles all dependencies automatically.
 
-### Installation
-
-1. **Clone the repository**:
+1. **Clone and configure**:
    ```bash
    git clone https://github.com/ai-find-me-a-job/cv-maker.git
    cd cv-maker
-   ```
-
-2. **Install dependencies**:
-   ```bash
-   # Using UV (recommended)
-   uv sync
-   
-   # Or using pip
-   pip install -e .
-   ```
-
-3. **Set up Playwright** (for web scraping):
-   ```bash
-   uv run python scripts/setup_playwright.py
-   # Or manually: uv run python -m playwright install chromium
-   ```
-
-4. **Configure environment variables**:
-   ```bash
    cp .env.example .env
    # Edit .env with your API keys
    ```
 
-### Environment Configuration
+2. **Start the application**:
+   ```bash
+   # Development mode (hot reload)
+   docker-compose -f docker-compose.dev.yml up -d
+   
+   # OR Production mode (4 workers)
+   docker-compose up -d
+   ```
+
+3. **Access the API**:
+   - API: http://localhost:8000
+   - Interactive Docs: http://localhost:8000/docs
+   - Redis: localhost:6379
+
+**That's it!** Docker handles Python, LaTeX, Playwright, and all dependencies.
+
+### Local Development (Advanced)
+
+For development without Docker, you'll need to install dependencies manually.
+
+**Prerequisites**:
+- Python 3.12+
+- UV package manager
+- LaTeX distribution (MiKTeX/TeX Live/MacTeX)
+- Redis server
+- Google API key
+
+**Setup**:
+```bash
+# 1. Clone repository
+git clone https://github.com/ai-find-me-a-job/cv-maker.git
+cd cv-maker
+
+# 2. Install Python dependencies
+uv sync
+
+# 3. Install Playwright browsers
+uv run python scripts/setup_playwright.py
+
+# 4. Configure environment
+cp .env.example .env
+# Edit .env with your API keys
+
+# 5. Start Redis
+redis-server  # or: docker run -d -p 6379:6379 redis:latest
+
+# 6. Run application
+uv run fastapi dev app/main.py --host 0.0.0.0 --port 8000
+```
+
+## 📝 Configuration
+
+### Environment Variables
 
 Create a `.env` file in the project root:
 
@@ -82,66 +110,84 @@ Create a `.env` file in the project root:
 GOOGLE_API_KEY="your-gemini-api-key"
 LLAMA_PARSE_API_KEY="your-llama-parse-key"
 
-# Optional
-GEMINI_MODEL="gemini-2.0-flash"  # Default model
-GEMINI_TEMPERATURE="0.1"        # Default temperature
+# Optional (with defaults)
+GEMINI_MODEL="gemini-2.0-flash"
+GEMINI_TEMPERATURE="0.1"
+REDIS_URL="redis://localhost:6379/0"  # Use "redis://redis:6379/0" in Docker
 ```
 
-### Running the Application
+### LaTeX Setup (Local Only)
 
-#### Using Docker (Recommended)
+**Docker users can skip this** - LaTeX is included in the image.
 
-**Development Mode (with hot reload)**:
+For local development, install a LaTeX distribution:
+
+<details>
+<summary><b>Windows (MiKTeX)</b></summary>
+
 ```bash
-# Start all services with hot reload
-docker-compose -f docker-compose.dev.yml up
+# Download from: https://miktex.org/download
+# Or using Chocolatey:
+choco install miktex
+```
+</details>
 
-# Or in detached mode
-docker-compose -f docker-compose.dev.yml up -d
+<details>
+<summary><b>macOS (MacTeX)</b></summary>
+
+```bash
+# Download from: http://www.tug.org/mactex/
+# Or using Homebrew:
+brew install --cask mactex
+```
+</details>
+
+<details>
+<summary><b>Linux (TeX Live)</b></summary>
+
+```bash
+# Ubuntu/Debian
+sudo apt-get install texlive-full
+
+# CentOS/RHEL
+sudo yum install texlive-scheme-full
+```
+</details>
+
+## 🐳 Docker
+
+### Docker Compose Files
+
+| File | Use Case | Features |
+|------|----------|----------|
+| `docker-compose.yml` | Production | 4 workers, optimized |
+| `docker-compose.dev.yml` | Development | Hot reload, code mounting |
+
+### Common Commands
+
+```bash
+# Start services
+docker-compose up -d                              # Production
+docker-compose -f docker-compose.dev.yml up -d    # Development
 
 # View logs
 docker-compose logs -f cv-maker
-```
 
-**Production Mode**:
-```bash
-# Start all services in production mode
-docker-compose up -d
+# Restart
+docker-compose restart
 
-# View logs
-docker-compose logs -f cv-maker
-
-# Stop services
+# Stop
 docker-compose down
+
+# Rebuild (after Dockerfile changes)
+docker-compose build
+
+# Status
+docker-compose ps
 ```
 
-The API will be available at http://localhost:8000
+See [Docker Deployment Guide](docs/docker-deployment.md) for advanced configuration.
 
-#### Local Development (without Docker)
-
-**Development Server**:
-```bash
-# Option 1: FastAPI development server
-uv run fastapi dev app/main.py --host 0.0.0.0 --port 8000
-```
-
-**Production Server**:
-```bash
-# Single worker
-uv run uvicorn main:app --host 0.0.0.0 --port 8000
-
-# Multiple workers
-uv run gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
-```
-
-**Note**: When running locally, make sure Redis is running:
-```bash
-# Start Redis locally
-redis-server
-
-# Or use Docker only for Redis
-docker run -d -p 6379:6379 redis:latest
-```
 
 ### Docker Compose Files
 
@@ -221,85 +267,59 @@ curl -X GET "http://localhost:8000/health"
 
 ```
 cv-maker/
-├── pyproject.toml            # Project dependencies and metadata
-├── .env                      # Environment variables (not in git)
-├── app/
-│   ├── main.py              # FastAPI application entry point
-│   ├── api/v1/              # REST API endpoints
-│   │   ├── cv.py            # CV generation endpoints
-│   │   └── index.py         # File upload/indexing endpoints
-│   ├── cv_maker/            # Core CV generation logic
-│   │   └── workflow/        # Agentic workflow implementation
-│   │       ├── __init__.py  # CVWorkflow class and step functions
-│   │       ├── models.py    # Resume, Experience, Skills data models
-│   │       ├── prompts.py   # LLM prompts and guidelines
-│   │       └── latex_generator.py # PyLaTeX document generation
-│   ├── core/                # Shared utilities
-│   │   ├── index_manager.py # Vector index management
-│   │   └── web_scraper.py   # Playwright web scraping
-│   └── config.py            # Environment configuration
-├── data/                    # User data and storage
-│   ├── files/              # User uploaded resumes (not in git)
-│   └── .storage/           # Vector index storage (not in git)
-├── output/                 # Generated LaTeX/PDF files (not in git)
-├── scripts/                # Setup and utility scripts
-├── tests/                  # Test suite
-└── docs/                   # Documentation
+├── app/                      # Application code
+│   ├── main.py              # FastAPI entry point
+│   ├── api/v1/              # API endpoints
+│   │   ├── cv.py            # CV generation
+│   │   └── index.py         # File indexing
+│   ├── services/workflow/   # CV workflow engine
+│   │   ├── __init__.py      # Workflow steps
+│   │   ├── extraction_models.py  # Data models
+│   │   ├── prompts.py       # LLM prompts
+│   │   └── latex_generator.py    # PDF generation
+│   └── core/                # Utilities
+│       ├── config.py        # Configuration
+│       ├── index_manager.py # Vector search
+│       └── web_scraper.py   # Job scraping
+├── data/                    # Persistent data
+│   ├── files/              # Uploaded resumes
+│   └── .storage/           # Vector index
+├── output/                 # Generated PDFs
+├── docs/                   # Documentation
+├── scripts/                # Setup scripts
+└── docker-compose.yml      # Docker configs
 ```
 
-## 🔧 Configuration
+## 🔧 Advanced Topics
 
-### LaTeX Setup
+### Vector Index
 
-The application requires a LaTeX distribution for PDF generation, this is already included in the Docker image. However, if running locally, install one of the following:
-
-**Windows (MiKTeX)**:
+The application uses LlamaIndex to store and search resume information. Data is persisted in `data/.storage/`. To reset:
 ```bash
-# Download and install from: https://miktex.org/download
-# Or using Chocolatey:
-choco install miktex
+rm -rf data/.storage
 ```
 
-**macOS (MacTeX)**:
-```bash
-# Download from: http://www.tug.org/mactex/
-# Or using Homebrew:
-brew install --cask mactex
-```
+### Production Deployment
 
-**Linux (TeX Live)**:
-```bash
-# Ubuntu/Debian:
-sudo apt-get install texlive-full
+For production environments:
+- Use `docker-compose.yml` (includes 4 workers)
+- Set proper CORS origins in `app/main.py`
+- Use Docker secrets or vault for API keys
+- Deploy behind nginx/Traefik reverse proxy
+- Enable HTTPS with SSL certificates
 
-# CentOS/RHEL:
-sudo yum install texlive-scheme-full
-```
-
-### Vector Index Storage
-
-The application stores vector indices in `data/.storage/`. This directory is created automatically and excluded from git. To reset the index, simply delete this directory.
+See [Docker Deployment Guide](docs/docker-deployment.md) for details.
 
 ## 🤝 Contributing
 
+Contributions are welcome! Please follow these steps:
+
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Commit your changes: `git commit -m 'Add amazing feature'`
-4. Push to the branch: `git push origin feature/amazing-feature`
-5. Open a Pull Request
-
-### Development Setup
-
-```bash
-# Install development dependencies
-uv sync --dev
-
-# Install pre-commit hooks (if available)
-pre-commit install
-
-# Run tests before committing
-uv run pytest
-```
+3. Make your changes and test thoroughly
+4. Commit: `git commit -m 'Add amazing feature'`
+5. Push: `git push origin feature/amazing-feature`
+6. Open a Pull Request
 
 ## 📝 License
 
@@ -313,16 +333,15 @@ This project is licensed under the GPL v3 - see the [LICENSE](LICENSE) file for 
 
 ## 🗺️ Roadmap
 
-- [x] **Human-in-the-loop for interactive resume creation** ✅
-- [x] **Multi-language support** ✅
+- [x] Human-in-the-loop interactive resume creation
+- [x] Multi-language support (English, Portuguese)
+- [x] Docker deployment with hot reload
 - [ ] Web interface for non-technical users
 - [ ] Resume templates and styling options
 - [ ] Additional output formats (Word, HTML)
-- [ ] Resume templates and styling options
 - [ ] Batch processing capabilities
-- [ ] Web interface for non-technical users
 - [ ] Integration with job boards and LinkedIn
-- [ ] Mobile app for on-the-go resume generation
+- [ ] Mobile app support
 
 ---
 
