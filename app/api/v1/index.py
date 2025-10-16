@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, UploadFile, File
-from app.models.index import AddFilesResponse
-from app.services import add_files_to_index
+from app.models.index import AddedFilesResponse
+from app.services import add_files_to_index, get_files_in_index
 from pathlib import Path
 import logging
 import tempfile
@@ -11,7 +11,7 @@ logger = logging.getLogger()
 router = APIRouter(prefix="/cv/index", tags=["Index Management"])
 
 
-@router.post("/add-files", response_model=AddFilesResponse)
+@router.post("/files", response_model=AddedFilesResponse)
 async def add_files_to_vector_index(files: list[UploadFile] = File(...)):
     """
     Add uploaded files to the vector index for CV generation.
@@ -41,7 +41,7 @@ async def add_files_to_vector_index(files: list[UploadFile] = File(...)):
         logger.info(f"Adding {len(temp_files)} files to vector index")
         added_files = await add_files_to_index(temp_files)
 
-        return AddFilesResponse(added_files=added_files)
+        return AddedFilesResponse(added_files=added_files)
 
     except Exception as e:
         logger.error(f"Error adding files to index: {e}")
@@ -56,3 +56,21 @@ async def add_files_to_vector_index(files: list[UploadFile] = File(...)):
                     logger.debug(f"Removed temporary file: {temp_file}")
             except Exception as e:
                 logger.warning(f"Failed to remove temporary file {temp_file}: {e}")
+
+
+@router.get("/files", response_model=AddedFilesResponse)
+async def get_files():
+    """
+    Retrieve a list of files currently stored in the vector index.
+
+    Returns:
+        List of file names or paths in the index.
+    """
+    try:
+        files_in_index = await get_files_in_index()
+        return AddedFilesResponse(added_files=files_in_index)
+    except Exception as e:
+        logger.error(f"Error retrieving files from index: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to retrieve files: {str(e)}"
+        )

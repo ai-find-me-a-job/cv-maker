@@ -117,3 +117,8 @@ async def add_files_to_index(file_paths: list[str | Path]) -> list[str]:
     index_manager = VectorIndexManager()
     index_manager.add_documents(file_paths)
     return list(index_manager.get_added_files())
+
+
+async def get_files_in_index() -> list[str]:
+    index_manager = VectorIndexManager()
+    return list(index_manager.get_added_files())
