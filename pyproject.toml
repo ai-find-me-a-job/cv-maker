@@ -20,4 +20,13 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["llama-index-utils-workflow>=0.4.1"]
+dev = ["llama-index-utils-workflow>=0.4.1", "taskipy>=1.14.1"]
+
+[tool.taskipy.tasks]
+start = "python -m fastapi run app/main.py"
+dev = "python -m fastapi dev app/main.py"
+build = "docker-compose build"
+docker_dev = "docker-compose -f docker-compose.dev.yml up"
+docker_run = "docker-compose -f docker-compose.yml up"
+docker_down = "docker-compose down"
+test = "echo 'No tests defined yet'"
