@@ -298,7 +298,6 @@ For production environments:
 - Deploy behind nginx/Traefik reverse proxy
 - Enable HTTPS with SSL certificates
 
-See [Docker Deployment Guide](docs/docker-deployment.md) for details.
 
 ## 🤝 Contributing
 
