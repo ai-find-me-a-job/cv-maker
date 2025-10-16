@@ -34,7 +34,7 @@ python setup_playwright.py
 ### Basic Usage
 
 ```python
-from src.cv_maker.web_scraper import scrape_job_url
+from app.cv_maker.web_scraper import scrape_job_url
 
 # Simple one-time scraping
 result = await scrape_job_url("https://example.com/job-posting")
@@ -48,7 +48,7 @@ if result["status"] == "success":
 ### Advanced Usage
 
 ```python
-from src.cv_maker.web_scraper import JobWebScraper
+from app.cv_maker.web_scraper import JobWebScraper
 
 # Using the scraper class for multiple URLs
 async with JobWebScraper(headless=True) as scraper:
@@ -62,7 +62,7 @@ async with JobWebScraper(headless=True) as scraper:
 The scraper is integrated into the CV workflow:
 
 ```python
-from src.cv_maker.workflow import CVWorkflow
+from app.cv_maker.workflow import CVWorkflow
 
 workflow = CVWorkflow()
 result = await workflow.run(job_url="https://example.com/job-posting")

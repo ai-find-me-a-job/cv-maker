@@ -14,7 +14,7 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).parent.parent
 sys.path.append(str(ROOT_DIR))  # Allow imports from parent directory
 
-from src.services import CVWorkflow
+from app.services import CVWorkflow
 
 if __name__ == "__main__":
     draw_all_possible_flows(CVWorkflow, str(ROOT_DIR / "docs/cv_workflow.html"))

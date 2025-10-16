@@ -2,15 +2,15 @@ import logging
 
 from fastapi import APIRouter, Body, HTTPException
 
-from src.core.config import SUPPORTED_LANGUAGES
-from src.models.cv import (
+from app.core.config import SUPPORTED_LANGUAGES
+from app.models.cv import (
     ContinueCVWorkflowRequest,
     ContinueCVWorkflowResponse,
     JobUrlRequest,
     StartCVWorkflowResponse,
     SupportedLanguagesResponse,
 )
-from src.services import continue_cv_workflow, start_cv_workflow
+from app.services import continue_cv_workflow, start_cv_workflow
 
 logger = logging.getLogger()
 

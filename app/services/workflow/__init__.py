@@ -3,15 +3,15 @@ import logging
 from llama_index.core.workflow import Context, Workflow, step
 from llama_index.llms.google_genai import GoogleGenAI
 
-from src.core.config import (
+from app.core.config import (
     GEMINI_MODEL,
     GEMINI_TEMPERATURE,
     GOOGLE_API_KEY,
     SCRAPPING_PAGE_CONTENT_LIMIT,
     SUPPORTED_LANGUAGES,
 )
-from src.core.index_manager import VectorIndexManager
-from src.core.web_scraper import scrape_job_url
+from app.core.index_manager import VectorIndexManager
+from app.core.web_scraper import scrape_job_url
 
 from .custom_events import (
     AskForCandidateInfoEvent,

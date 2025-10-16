@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, UploadFile, File
-from src.models.index import AddFilesResponse
-from src.services import add_files_to_index
+from app.models.index import AddFilesResponse
+from app.services import add_files_to_index
 from pathlib import Path
 import logging
 import tempfile

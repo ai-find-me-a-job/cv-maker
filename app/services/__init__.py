@@ -5,10 +5,10 @@ from uuid import uuid4
 from llama_index.core.workflow import Context
 from redis.asyncio import Redis
 
-from src.core.config import REDIS_URL
-from src.core.exceptions import StorageError, WorkFlowError
-from src.core.index_manager import VectorIndexManager
-from src.models.cv import ContinueCVWorkflowResponse, StartCVWorkflowResponse
+from app.core.config import REDIS_URL
+from app.core.exceptions import StorageError, WorkFlowError
+from app.core.index_manager import VectorIndexManager
+from app.models.cv import ContinueCVWorkflowResponse, StartCVWorkflowResponse
 
 from .workflow import CVStopEvent, CVWorkflow
 from .workflow.custom_events import AskForCVReviewEvent, CVReviewResponseEvent
@@ -19,6 +19,9 @@ async def start_cv_workflow(
 ) -> StartCVWorkflowResponse:
     """
     Asynchronously starts a CV workflow based on a provided job URL or job description.
+    When the workflow reaches a point where it requires human review, it generates a unique
+    workflow ID, stores the current workflow context in Redis, and returns the LaTeX content
+    for review.
 
     Parameters:
         job_url (str | None): The URL of the job posting. If provided, it will be used to inform the workflow.
