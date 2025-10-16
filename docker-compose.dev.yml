@@ -1,0 +1,42 @@
+services:
+  cv-maker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - LLAMA_PARSE_API_KEY=${LLAMA_PARSE_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.0-flash}
+      - GEMINI_TEMPERATURE=${GEMINI_TEMPERATURE:-0.1}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - PYTHONDONTWRITEBYTECODE=1
+    volumes:
+      # Mount source code for hot reload
+      - ./app:/app/app
+      # Mount data directories for persistence
+      - ./data/files:/app/data/files
+      - ./data/.storage:/app/data/.storage
+      - ./output:/app/output
+      - ./app.log:/app/app.log
+    command: ["uv", "run", "fastapi", "dev", "app/main.py", "--host", "0.0.0.0", "--port", "8000"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+  
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+
+volumes:
+  redis-data:
+
