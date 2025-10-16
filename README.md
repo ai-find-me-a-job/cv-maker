@@ -186,9 +186,6 @@ docker-compose build
 docker-compose ps
 ```
 
-See [Docker Deployment Guide](docs/docker-deployment.md) for advanced configuration.
-
-
 
 ### Useful Commands
 
