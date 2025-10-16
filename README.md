@@ -217,7 +217,7 @@ docker-compose ps
 
 For detailed Docker deployment instructions, see [Docker Deployment Guide](docs/docker-deployment.md).
 
-## �📖 API Usage
+## 📖 API Usage
 
 ### Get Supported Languages
 
