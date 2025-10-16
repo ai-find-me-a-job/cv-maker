@@ -89,16 +89,43 @@ GEMINI_TEMPERATURE="0.1"        # Default temperature
 
 ### Running the Application
 
-#### Development Server
-```bash
-# Option 1: FastAPI development server
-uv run fastapi dev main.py --host 0.0.0.0 --port 8000
+#### Using Docker (Recommended)
 
-# Option 2: Direct Python execution
-uv run python main.py
+**Development Mode (with hot reload)**:
+```bash
+# Start all services with hot reload
+docker-compose -f docker-compose.dev.yml up
+
+# Or in detached mode
+docker-compose -f docker-compose.dev.yml up -d
+
+# View logs
+docker-compose logs -f cv-maker
 ```
 
-#### Production Server
+**Production Mode**:
+```bash
+# Start all services in production mode
+docker-compose up -d
+
+# View logs
+docker-compose logs -f cv-maker
+
+# Stop services
+docker-compose down
+```
+
+The API will be available at http://localhost:8000
+
+#### Local Development (without Docker)
+
+**Development Server**:
+```bash
+# Option 1: FastAPI development server
+uv run fastapi dev app/main.py --host 0.0.0.0 --port 8000
+```
+
+**Production Server**:
 ```bash
 # Single worker
 uv run uvicorn main:app --host 0.0.0.0 --port 8000
@@ -107,12 +134,44 @@ uv run uvicorn main:app --host 0.0.0.0 --port 8000
 uv run gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
 ```
 
-The API will be available at:
-- **API Base**: http://localhost:8000
-- **Interactive Docs**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
+**Note**: When running locally, make sure Redis is running:
+```bash
+# Start Redis locally
+redis-server
 
-## 📖 API Usage
+# Or use Docker only for Redis
+docker run -d -p 6379:6379 redis:latest
+```
+
+### Docker Compose Files
+
+| File | Mode | Features |
+|------|------|----------|
+| `docker-compose.yml` | Production | 4 workers, optimized performance |
+| `docker-compose.dev.yml` | Development | Hot reload, source code mounting, single worker |
+
+### Useful Commands
+
+```bash
+# View logs in real-time
+docker-compose logs -f cv-maker
+
+# Restart services
+docker-compose restart
+
+# Stop all services
+docker-compose down
+
+# Rebuild after Dockerfile changes
+docker-compose build
+
+# Check service status
+docker-compose ps
+```
+
+For detailed Docker deployment instructions, see [Docker Deployment Guide](docs/docker-deployment.md).
+
+## �📖 API Usage
 
 ### Get Supported Languages
 
@@ -162,10 +221,10 @@ curl -X GET "http://localhost:8000/health"
 
 ```
 cv-maker/
-├── main.py                    # FastAPI application entry point
 ├── pyproject.toml            # Project dependencies and metadata
 ├── .env                      # Environment variables (not in git)
-├── src/
+├── app/
+│   ├── main.py              # FastAPI application entry point
 │   ├── api/v1/              # REST API endpoints
 │   │   ├── cv.py            # CV generation endpoints
 │   │   └── index.py         # File upload/indexing endpoints
@@ -192,7 +251,7 @@ cv-maker/
 
 ### LaTeX Setup
 
-The application requires a LaTeX distribution for PDF generation:
+The application requires a LaTeX distribution for PDF generation, this is already included in the Docker image. However, if running locally, install one of the following:
 
 **Windows (MiKTeX)**:
 ```bash
