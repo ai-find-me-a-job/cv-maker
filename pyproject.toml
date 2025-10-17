@@ -17,10 +17,18 @@ dependencies = [
     "python-dotenv>=1.1.1",
     "fastapi[standard]>=0.118.0",
     "redis[hiredis]>=6.4.0",
+    "pydantic-settings>=2.11.0",
+    "llama-index-vector-stores-qdrant>=0.8.6",
 ]
 
 [dependency-groups]
-dev = ["llama-index-utils-workflow>=0.4.1", "taskipy>=1.14.1"]
+dev = [
+    "llama-index-utils-workflow>=0.4.1",
+    "taskipy>=1.14.1",
+    "pytest>=8.3.0",
+    "pytest-env>=1.1.5",
+    "pytest-asyncio>=1.2.0",
+]
 
 [tool.taskipy.tasks]
 start = "python -m fastapi run app/main.py"
@@ -29,4 +37,10 @@ build = "docker-compose build"
 docker_dev = "docker-compose -f docker-compose.dev.yml up"
 docker_run = "docker-compose -f docker-compose.yml up"
 docker_down = "docker-compose down"
-test = "echo 'No tests defined yet'"
+test = "pytest tests/ -v"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"

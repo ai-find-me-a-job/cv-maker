@@ -10,11 +10,11 @@ services:
       - LLAMA_PARSE_API_KEY=${LLAMA_PARSE_API_KEY}
       - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.0-flash}
       - GEMINI_TEMPERATURE=${GEMINI_TEMPERATURE:-0.1}
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - redis_dsn=${redis_dsn:-redis://redis:6379/0}
+      - QDRANT_KEY=${QDRANT_KEY}
+      - QDRANT_ENDPOINT=${QDRANT_ENDPOINT}
     volumes:
       # Mount data directories as volumes for persistence
-      - ./data/files:/app/data/files
-      - ./data/.storage:/app/data/.storage
       - ./output:/app/output
       - ./app.log:/app/app.log
     restart: unless-stopped

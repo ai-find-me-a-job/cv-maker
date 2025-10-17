@@ -3,13 +3,7 @@ import logging
 from llama_index.core.workflow import Context, Workflow, step
 from llama_index.llms.google_genai import GoogleGenAI
 
-from app.core.config import (
-    GEMINI_MODEL,
-    GEMINI_TEMPERATURE,
-    GOOGLE_API_KEY,
-    SCRAPPING_PAGE_CONTENT_LIMIT,
-    SUPPORTED_LANGUAGES,
-)
+from app.core.config import config
 from app.core.index_manager import VectorIndexManager
 from app.core.web_scraper import scrape_job_url
 
@@ -35,11 +29,15 @@ from .prompts import (
 
 class CVWorkflow(Workflow):
     llm = GoogleGenAI(
-        model=GEMINI_MODEL, api_key=GOOGLE_API_KEY, temperature=GEMINI_TEMPERATURE
+        model=config.gemini_model,
+        api_key=config.google_api_key,
+        temperature=config.gemini_temperature,
     )
     index_manager = VectorIndexManager()
     index = index_manager.get_index()
     logger = logging.getLogger("cv_workflow")
+    scraping_page_content_limit = config.scrapping_page_content_limit
+    supported_languages = config.supported_languages
 
     @step
     async def start(
@@ -72,11 +70,11 @@ class CVWorkflow(Workflow):
         )
         self.logger.debug(f"Extracted text length: {len(page_text)} characters")
 
-        if len(page_text) > SCRAPPING_PAGE_CONTENT_LIMIT:
+        if len(page_text) > self.scraping_page_content_limit:
             self.logger.warning(
-                f"Extracted page text length ({len(page_text)}) exceeds limit of {SCRAPPING_PAGE_CONTENT_LIMIT} characters. Truncating."
+                f"Extracted page text length ({len(page_text)}) exceeds limit of {self.scraping_page_content_limit} characters. Truncating."
             )
-            page_text = page_text[:SCRAPPING_PAGE_CONTENT_LIMIT]
+            page_text = page_text[: self.scraping_page_content_limit]
 
         # Use LLM to extract job description from the page content
         job_description = await self.llm.acomplete(
@@ -149,7 +147,7 @@ class CVWorkflow(Workflow):
         language = await ctx.store.get("language", default="en")
 
         # Determine language instruction
-        language_instruction = SUPPORTED_LANGUAGES.get(language, "English")
+        language_instruction = self.supported_languages.get(language, "English")
         prompt = RESUME_CREATION_PROMPT_TEMPLATE.format(
             language=language_instruction,
             personal_info=personal_info,

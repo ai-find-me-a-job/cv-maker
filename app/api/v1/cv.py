@@ -2,7 +2,7 @@ import logging
 
 from fastapi import APIRouter, Body, HTTPException
 
-from app.core.config import SUPPORTED_LANGUAGES
+from app.core.config import config
 from app.models.cv import (
     ContinueCVWorkflowRequest,
     ContinueCVWorkflowResponse,
@@ -19,10 +19,10 @@ router = APIRouter(prefix="/cv", tags=["CV Generation"])
 
 def validate_language(language: str) -> str:
     """Validate and return the language code if supported."""
-    if language not in SUPPORTED_LANGUAGES:
+    if language not in config.supported_languages:
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported language '{language}'. Supported languages: {', '.join(SUPPORTED_LANGUAGES.keys())}",
+            detail=f"Unsupported language '{language}'. Supported languages: {', '.join(config.supported_languages.keys())}",
         )
     return language
 
@@ -32,7 +32,7 @@ async def get_supported_languages():
     """
     Get the list of supported languages for CV generation.
     """
-    return SupportedLanguagesResponse(languages=SUPPORTED_LANGUAGES)
+    return SupportedLanguagesResponse(languages=config.supported_languages)
 
 
 @router.post("/run/from-description/{language}", response_model=StartCVWorkflowResponse)

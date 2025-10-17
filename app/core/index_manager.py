@@ -1,81 +1,84 @@
-from llama_parse import LlamaParse, ResultType
+import logging as logger
+from pathlib import Path
+from typing import Sequence
+
 from llama_index.core import (
-    VectorStoreIndex,
     SimpleDirectoryReader,
-    StorageContext,
-    load_index_from_storage,
+    VectorStoreIndex,
 )
 from llama_index.embeddings.google_genai import GoogleGenAIEmbedding
-from pathlib import Path
-from .config import GOOGLE_API_KEY, LLAMA_PARSER_API_KEY, STORAGE_DIR
-import logging as logger
-from typing import Sequence
+from llama_index.vector_stores.qdrant import QdrantVectorStore
+from llama_parse import LlamaParse, ResultType
+from qdrant_client import AsyncQdrantClient
+
+from .config import config
 
 
 class VectorIndexManager:
-    def __init__(self, storage_dir: str | None = None) -> None:
-        if storage_dir is None:
-            self.storage_dir = STORAGE_DIR
-        else:
-            self.storage_dir = storage_dir
-
+    def __init__(self, collection_name: str = "rag-files") -> None:
+        """Manage the vector index using Qdrant as the vector store."""
+        self.collection_name = collection_name
         self.embed_model = GoogleGenAIEmbedding(
-            model="embedding-001", api_key=GOOGLE_API_KEY
+            model="gemini-embedding-001", api_key=config.google_api_key
+        )
+        self.qdrant_client = AsyncQdrantClient(
+            url=config.qdrant_endpoint,
+            api_key=config.qdrant_key,
         )
         self.index = self._load_or_create_index()
 
     def _load_or_create_index(self) -> VectorStoreIndex:
-        if Path(self.storage_dir).exists():
-            storage_context = StorageContext.from_defaults(
-                persist_dir=str(self.storage_dir)
-            )
-            return load_index_from_storage(
-                storage_context, embed_model=self.embed_model
-            )  # type: ignore
-        else:
-            return VectorStoreIndex([], embed_model=self.embed_model)
+        vector_store = QdrantVectorStore(
+            aclient=self.qdrant_client, collection_name=self.collection_name
+        )
+        index = VectorStoreIndex.from_vector_store(
+            vector_store=vector_store,
+            embed_model=self.embed_model,
+            use_async=True,
+            store_nodes_override=True,
+        )
+        return index
 
-    def add_documents(self, file_paths: Sequence[str | Path]) -> None:
+    async def add_documents(self, file_paths: Sequence[str | Path]) -> None:
         parser = LlamaParse(  # type: ignore
-            api_key=LLAMA_PARSER_API_KEY,  # type: ignore
+            api_key=config.llama_parser_api_key,  # type: ignore
             result_type=ResultType.MD,
             verbose=True,
         )
 
         file_extractor = {".pdf": parser}
-
+        files_to_add = []
         for file_path in file_paths:
-            if self._check_file_already_added(file_path):
+            if await self._check_file_already_added(file_path):
                 logger.warning(f"File {file_path} already added, skipping.")
                 continue
+            files_to_add.append(file_path)
 
-            documents = SimpleDirectoryReader(
-                input_files=[file_path],
-                file_extractor=file_extractor,  # type: ignore
-            ).load_data()
+        documents = await SimpleDirectoryReader(
+            input_files=files_to_add,
+            file_extractor=file_extractor,  # type: ignore
+        ).aload_data()
 
-            # Insert documents into existing index
-            for doc in documents:
-                self.index.insert(doc)
+        # Insert documents into existing index
+        for doc in documents:
+            await self.index.ainsert(doc)
 
-        # Persist the updated index
-        self.index.storage_context.persist(persist_dir=self.storage_dir)
-
-    def get_added_files(self) -> set:
+    async def get_added_files(self) -> set:
         """Get list of filenames already in the vector store"""
-        if not hasattr(self.index, "docstore") or not self.index.docstore.docs:
-            return set()
-
+        docs_info = self.index.ref_doc_info
         filenames = set()
-        for doc in self.index.docstore.docs.values():
+        if docs_info is None:
+            return filenames
+
+        for doc in docs_info.values():
             if hasattr(doc, "metadata") and "file_name" in doc.metadata:
                 filenames.add(doc.metadata["file_name"])
 
         return filenames
 
-    def _check_file_already_added(self, file_path: str | Path) -> bool:
+    async def _check_file_already_added(self, file_path: str | Path) -> bool:
         """Check if a file has already been added to the index"""
-        added_files = self.get_added_files()
+        added_files = await self.get_added_files()
         return Path(file_path).name in added_files
 
     def get_index(self) -> VectorStoreIndex:
