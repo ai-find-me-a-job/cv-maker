@@ -41,7 +41,7 @@ COPY pyproject.toml uv.lock ./
 COPY app ./app
 
 # Create necessary directories
-RUN mkdir -p /app/data/files /app/data/.storage /app/output
+RUN mkdir -p /app/output
 
 # Install Python dependencies using UV
 RUN uv sync --frozen --no-dev

@@ -5,7 +5,7 @@ from uuid import uuid4
 from llama_index.core.workflow import Context
 from redis.asyncio import Redis
 
-from app.core.config import REDIS_URL
+from app.core.config import config
 from app.core.exceptions import StorageError, WorkFlowError
 from app.core.index_manager import VectorIndexManager
 from app.models.cv import ContinueCVWorkflowResponse, StartCVWorkflowResponse
@@ -36,7 +36,7 @@ async def start_cv_workflow(
     Raises:
         WorkFlowError: If the workflow completes without triggering an AskForCVReviewEvent.
     """
-    redis_client = Redis.from_url(REDIS_URL, decode_responses=True)
+    redis_client = Redis.from_url(str(config.redis_dsn), decode_responses=True)
     workflow = CVWorkflow(timeout=600)
 
     workflow_handler = workflow.run(
@@ -45,6 +45,8 @@ async def start_cv_workflow(
     async for event in workflow_handler.stream_events():
         if isinstance(event, AskForCVReviewEvent):
             workflow_id = str(uuid4())
+            if workflow_handler.ctx is None:
+                raise WorkFlowError("Workflow context is missing.")
             workflow_ctx = workflow_handler.ctx.to_dict()
             await redis_client.set(
                 name=f"cv_workflow:{workflow_id}", value=json.dumps(workflow_ctx)
@@ -79,7 +81,7 @@ async def continue_cv_workflow(
         WorkFlowError: If the CV workflow does not complete properly.
     """
 
-    redis_client = Redis.from_url(REDIS_URL, decode_responses=True)
+    redis_client = Redis.from_url(str(config.redis_dsn), decode_responses=True)
     workflow_ctx = await redis_client.get(f"cv_workflow:{workflow_id}")
     if not workflow_ctx:
         raise StorageError(f"No workflow found with ID: {workflow_id}")
@@ -87,6 +89,8 @@ async def continue_cv_workflow(
     workflow = CVWorkflow(timeout=600)
     ctx = Context.from_dict(workflow=workflow, data=json.loads(workflow_ctx))
     workflow_handler = workflow.run(ctx=ctx)
+    if workflow_handler.ctx is None:
+        raise WorkFlowError("Workflow context is missing.")
     workflow_handler.ctx.send_event(
         CVReviewResponseEvent(approve=approve, feedback=feedback)
     )
@@ -100,6 +104,8 @@ async def continue_cv_workflow(
                 latex_content=event.latex_content,
             )
         elif isinstance(event, AskForCVReviewEvent):
+            if workflow_handler.ctx is None:
+                raise WorkFlowError("Workflow context is missing.")
             workflow_ctx = workflow_handler.ctx.to_dict()
             await redis_client.set(
                 name=f"cv_workflow:{workflow_id}", value=json.dumps(workflow_ctx)
@@ -115,10 +121,11 @@ async def continue_cv_workflow(
 
 async def add_files_to_index(file_paths: list[str | Path]) -> list[str]:
     index_manager = VectorIndexManager()
-    index_manager.add_documents(file_paths)
-    return list(index_manager.get_added_files())
+    added_files = await index_manager.add_documents(file_paths)
+    return added_files
 
 
 async def get_files_in_index() -> list[str]:
     index_manager = VectorIndexManager()
-    return list(index_manager.get_added_files())
+    all_files = await index_manager.get_added_files()
+    return all_files

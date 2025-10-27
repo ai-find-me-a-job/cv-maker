@@ -1,82 +1,143 @@
-from llama_parse import LlamaParse, ResultType
+import logging as logger
+from pathlib import Path
+from typing import Sequence
+
 from llama_index.core import (
-    VectorStoreIndex,
     SimpleDirectoryReader,
-    StorageContext,
-    load_index_from_storage,
+    VectorStoreIndex,
 )
 from llama_index.embeddings.google_genai import GoogleGenAIEmbedding
-from pathlib import Path
-from .config import GOOGLE_API_KEY, LLAMA_PARSER_API_KEY, STORAGE_DIR
-import logging as logger
-from typing import Sequence
+from llama_index.vector_stores.qdrant import QdrantVectorStore
+from llama_parse import LlamaParse, ResultType
+from qdrant_client import AsyncQdrantClient
+
+from .config import config
 
 
 class VectorIndexManager:
-    def __init__(self, storage_dir: str | None = None) -> None:
-        if storage_dir is None:
-            self.storage_dir = STORAGE_DIR
-        else:
-            self.storage_dir = storage_dir
+    """Manager for a vector index backed by Qdrant.
 
+    This class wraps a Llama-Index VectorStoreIndex that uses Qdrant as the
+    vector store implementation. It provides convenience methods to add files
+    (documents) to the index, list files already added (by inspecting point
+    payloads) and delete the underlying collection.
+    """
+
+    def __init__(self, collection_name: str = "rag-files") -> None:
+        """Initialize resources for the vector index.
+
+        Args:
+            collection_name: Name of the Qdrant collection to use/create.
+
+        Side effects:
+            - Creates an AsyncQdrantClient using credentials from `config`.
+            - Builds a Google embedding model instance.
+            - Constructs a QdrantVectorStore wrapper and a VectorStoreIndex
+              instance (async-enabled) that will be used for insert/query
+              operations.
+        """
+        self.collection_name = collection_name
         self.embed_model = GoogleGenAIEmbedding(
-            model="embedding-001", api_key=GOOGLE_API_KEY
+            model="gemini-embedding-001", api_key=config.google_api_key
         )
-        self.index = self._load_or_create_index()
+        self.qdrant_client = AsyncQdrantClient(
+            url=config.qdrant_endpoint,
+            api_key=config.qdrant_key,
+        )
+        self.vector_store = QdrantVectorStore(
+            aclient=self.qdrant_client, collection_name=self.collection_name
+        )
+        self.index = VectorStoreIndex.from_vector_store(
+            vector_store=self.vector_store,
+            embed_model=self.embed_model,
+            use_async=True,
+            store_nodes_override=True,
+        )
 
-    def _load_or_create_index(self) -> VectorStoreIndex:
-        if Path(self.storage_dir).exists():
-            storage_context = StorageContext.from_defaults(
-                persist_dir=str(self.storage_dir)
-            )
-            return load_index_from_storage(
-                storage_context, embed_model=self.embed_model
-            )  # type: ignore
-        else:
-            return VectorStoreIndex([], embed_model=self.embed_model)
+    async def add_documents(self, file_paths: Sequence[str | Path]) -> list[str]:
+        """Add files to the vector index.
 
-    def add_documents(self, file_paths: Sequence[str | Path]) -> None:
+        The method will:
+        - Skip files that appear to have been already added (by file name).
+        - Parse supported files (PDF via LlamaParse parser) into documents.
+        - Insert the resulting documents (nodes) into the vector index.
+
+        Args:
+            file_paths: Iterable of file paths (strings or Path objects) to add.
+
+        Returns:
+            A list of file names that were accepted for insertion.
+        """
+
         parser = LlamaParse(  # type: ignore
-            api_key=LLAMA_PARSER_API_KEY,  # type: ignore
+            api_key=config.llama_parser_api_key,  # type: ignore
             result_type=ResultType.MD,
             verbose=True,
         )
-
+        already_added_files = await self.get_added_files()
         file_extractor = {".pdf": parser}
-
+        files_to_add = []
         for file_path in file_paths:
-            if self._check_file_already_added(file_path):
+            file_path = Path(file_path)
+            if file_path.name in already_added_files:
                 logger.warning(f"File {file_path} already added, skipping.")
                 continue
+            files_to_add.append(file_path)
 
-            documents = SimpleDirectoryReader(
-                input_files=[file_path],
-                file_extractor=file_extractor,  # type: ignore
-            ).load_data()
+        documents = await SimpleDirectoryReader(
+            input_files=files_to_add,
+            file_extractor=file_extractor,  # type: ignore
+        ).aload_data()
 
-            # Insert documents into existing index
-            for doc in documents:
-                self.index.insert(doc)
+        # Insert documents into existing index
+        for doc in documents:
+            await self.index.ainsert(doc)
 
-        # Persist the updated index
-        self.index.storage_context.persist(persist_dir=self.storage_dir)
+        return [file.name for file in files_to_add]
 
-    def get_added_files(self) -> set:
-        """Get list of filenames already in the vector store"""
-        if not hasattr(self.index, "docstore") or not self.index.docstore.docs:
-            return set()
+    async def get_added_files(self) -> list[str]:
+        """Return a list of filenames already present in the collection.
 
-        filenames = set()
-        for doc in self.index.docstore.docs.values():
-            if hasattr(doc, "metadata") and "file_name" in doc.metadata:
-                filenames.add(doc.metadata["file_name"])
+        The implementation inspects the Qdrant collection points payloads and
+        returns the unique values of the `file_name` payload key. The list is
+        returned as `list[str]` for simple consumption by callers.
 
-        return filenames
+        Note: This method performs a scroll request and may return up to the
+        `limit` configured in the call. For very large collections, pagination
+        would be required.
+        """
 
-    def _check_file_already_added(self, file_path: str | Path) -> bool:
-        """Check if a file has already been added to the index"""
-        added_files = self.get_added_files()
-        return Path(file_path).name in added_files
+        points = await self.qdrant_client.scroll(
+            collection_name=self.collection_name,
+            limit=1000,
+            with_payload=True,
+            with_vectors=False,
+        )
+
+        files_set = set()
+        for point in points[0]:
+            payload = point.payload
+            if not payload:
+                continue
+            files_set.add(payload.get("file_name"))
+
+        # Return stable list (deduplicated)
+        return list(files_set)
 
     def get_index(self) -> VectorStoreIndex:
+        """Return the underlying VectorStoreIndex instance.
+
+        This provides access for advanced operations not directly exposed by
+        this manager wrapper.
+        """
+
         return self.index
+
+    async def delete_collection(self) -> None:
+        """Delete the underlying Qdrant collection.
+
+        Use this to remove all stored vectors and metadata for the configured
+        collection. This operation is irreversible.
+        """
+
+        await self.qdrant_client.delete_collection(self.collection_name)

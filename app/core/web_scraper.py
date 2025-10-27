@@ -1,6 +1,8 @@
-from playwright.async_api import async_playwright, Browser
-from typing import Optional, Dict, Any
 import logging
+from typing import Any, Dict, Optional
+
+from playwright.async_api import Browser, async_playwright
+
 from .exceptions import WebScrapError
 
 
@@ -71,7 +73,8 @@ class JobWebScraper:
             await self.start_browser()
 
         self.logger.info(f"Scraping job page: {url}")
-
+        if not self.browser:
+            raise WebScrapError("Browser is not initialized")
         context = await self.browser.new_context(
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             viewport={"width": 1920, "height": 1080},
