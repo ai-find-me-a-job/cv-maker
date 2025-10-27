@@ -9,7 +9,8 @@ from llama_index.core import (
 from llama_index.embeddings.google_genai import GoogleGenAIEmbedding
 from llama_index.vector_stores.qdrant import QdrantVectorStore
 from llama_parse import LlamaParse, ResultType
-from qdrant_client import AsyncQdrantClient
+from qdrant_client import AsyncQdrantClient, QdrantClient
+from qdrant_client.http.models import Distance, VectorParams
 
 from .config import config
 
@@ -38,14 +39,24 @@ class VectorIndexManager:
         """
         self.collection_name = collection_name
         self.embed_model = GoogleGenAIEmbedding(
-            model="gemini-embedding-001", api_key=config.google_api_key
+            model="gemini-embedding-001",
+            api_key=config.google_api_key,
+            embedding_config=config.embed_config,
         )
-        self.qdrant_client = AsyncQdrantClient(
+        self.aqdrant_client = AsyncQdrantClient(
             url=config.qdrant_endpoint,
             api_key=config.qdrant_key,
         )
+        self.qdrant_client = QdrantClient(
+            url=config.qdrant_endpoint,
+            api_key=config.qdrant_key,
+        )
+        self._create_collection_if_not_exists()
+
         self.vector_store = QdrantVectorStore(
-            aclient=self.qdrant_client, collection_name=self.collection_name
+            client=self.qdrant_client,
+            aclient=self.aqdrant_client,
+            collection_name=self.collection_name,
         )
         self.index = VectorStoreIndex.from_vector_store(
             vector_store=self.vector_store,
@@ -53,6 +64,18 @@ class VectorIndexManager:
             use_async=True,
             store_nodes_override=True,
         )
+
+    def _create_collection_if_not_exists(self) -> None:
+        if not self.qdrant_client.collection_exists(self.collection_name):
+            self.qdrant_client.create_collection(
+                collection_name=self.collection_name,
+                vectors_config={
+                    "text-dense": VectorParams(
+                        size=config.embed_config.output_dimensionality,
+                        distance=Distance.COSINE,
+                    )
+                },
+            )
 
     async def add_documents(self, file_paths: Sequence[str | Path]) -> list[str]:
         """Add files to the vector index.
@@ -107,7 +130,7 @@ class VectorIndexManager:
         would be required.
         """
 
-        points = await self.qdrant_client.scroll(
+        points = await self.aqdrant_client.scroll(
             collection_name=self.collection_name,
             limit=1000,
             with_payload=True,
@@ -140,4 +163,4 @@ class VectorIndexManager:
         collection. This operation is irreversible.
         """
 
-        await self.qdrant_client.delete_collection(self.collection_name)
+        await self.aqdrant_client.delete_collection(self.collection_name)

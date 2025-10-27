@@ -1,10 +1,15 @@
-from fastapi import APIRouter, HTTPException, UploadFile, File
-from app.models.index import AddedFilesResponse
-from app.services import add_files_to_index, get_files_in_index
-from pathlib import Path
 import logging
 import tempfile
+from pathlib import Path
 
+from fastapi import APIRouter, File, HTTPException, UploadFile
+
+from app.models.index import AddedFilesResponse
+from app.services import (
+    add_files_to_index,
+    delete_vector_index_collection,
+    get_files_in_index,
+)
 
 logger = logging.getLogger()
 
@@ -73,4 +78,21 @@ async def get_files():
         logger.error(f"Error retrieving files from index: {e}")
         raise HTTPException(
             status_code=500, detail=f"Failed to retrieve files: {str(e)}"
+        )
+
+
+@router.delete("/collection", status_code=204)
+async def delete_collection():
+    """
+    Delete the entire vector index collection.
+
+    This endpoint removes all data from the vector index.
+    Use with caution as this action is irreversible.
+    """
+    try:
+        await delete_vector_index_collection()
+    except Exception as e:
+        logger.error(f"Error deleting vector index collection: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to delete collection: {str(e)}"
         )

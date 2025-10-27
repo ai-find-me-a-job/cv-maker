@@ -121,14 +121,41 @@ class CVWorkflow(Workflow):
         )
         self.logger.debug(f"Extracted experiences: {experiences}")
         education = await query_engine.aquery(
-            """List educational background such as degrees, certifications, and relevant coursework"""
+            """List educational background such as degrees and relevant coursework (but not certifications)"""
         )
         self.logger.debug(f"Extracted education: {education}")
+
+        certifications = await query_engine.aquery(
+            """List professional certifications with the following details for each:
+            - Certification Name
+            - Issuing Organization
+            - Date obtained (and expiration if applicable)
+            - Credential ID if available
+            - URL to verify the certification if available
+            Only include verified or formal certifications, not just courses or training."""
+        )
+        self.logger.debug(f"Extracted certifications: {certifications}")
+
+        personal_projects = await query_engine.aquery(
+            f"""List relevant personal projects that showcase skills related to the job description below.
+            For each project include:
+            - Project name
+            - Brief description
+            - Technologies/tools used
+            - Key features or achievements
+            - URL (GitHub, live demo, etc.) if available
+            --------------
+            {job_description}
+            """
+        )
+        self.logger.debug(f"Extracted personal projects: {personal_projects}")
 
         await ctx.store.set("personal_info", str(personal_info))
         await ctx.store.set("skills", str(skills))
         await ctx.store.set("experiences", str(experiences))
         await ctx.store.set("education", str(education))
+        await ctx.store.set("certifications", str(certifications))
+        await ctx.store.set("personal_projects", str(personal_projects))
         return GenerateResumeEvent()
 
     @step
@@ -140,6 +167,8 @@ class CVWorkflow(Workflow):
         skills = await ctx.store.get("skills")
         experiences = await ctx.store.get("experiences")
         education = await ctx.store.get("education")
+        certifications = await ctx.store.get("certifications")
+        personal_projects = await ctx.store.get("personal_projects")
 
         self.logger.info(
             f"Starting resume generation for job: {job_description[:50]}..."
@@ -154,6 +183,8 @@ class CVWorkflow(Workflow):
             skills=skills,
             experiences=experiences,
             education=education,
+            certifications=certifications,
+            personal_projects=personal_projects,
             job_description=job_description,
         )
         feedback = await ctx.store.get("feedback", default="")

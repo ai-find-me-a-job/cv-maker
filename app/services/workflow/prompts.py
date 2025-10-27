@@ -11,9 +11,12 @@ Generate the entire resume content (all text, section headers, bullet points, et
 
 # Input Data
 You will receive:
-- **Personal Information**: Name, contact details, professional summary
+- **Personal Information**: Name, contact details
+- **Professional Summary**: A concise overview of career, expertise, and impact (4-5 lines)
 - **Work Experience**: Previous positions, companies, dates, responsibilities, achievements
-- **Skills**: Technical skills, soft skills, languages, certifications
+- **Skills**: Technical skills, soft skills, languages
+- **Certifications**: Professional certifications and credentials
+- **Personal Projects**: Relevant projects showcasing technical skills
 - **Education**: Degrees, institutions, graduation dates, relevant coursework
 - **Job Description**: Target position requirements and responsibilities
 
@@ -37,6 +40,16 @@ You will receive:
 
 ## Section Guidelines
 
+### Professional Summary
+- Write a powerful 4-5 line paragraph that captures:
+  - Your field of work and years of experience/seniority level
+  - Core technical expertise and notable achievements
+  - Impact and value you bring to organizations
+  - Career goals or professional focus aligned with the job
+- Use strong, action-oriented language
+- Include relevant keywords from the job description
+- Focus on what makes you uniquely qualified for this role
+
 ### Experience
 - Start with most recent position first (reverse chronological)
 - **Avoid duplicates**: If the same job experience appears multiple times in the applicant's data, consolidate it into a single entry with the most comprehensive information
@@ -51,6 +64,20 @@ You will receive:
 - Prioritize skills mentioned in the job description
 - Group by category (Technical, Languages, Soft Skills)
 - Keep concise and job-relevant
+
+### Certifications
+- List only relevant, formal certifications that add value to your application
+- Include: certification name, issuing organization, and date obtained
+- Add credential IDs and verification URLs when available
+- Order by relevance to the job and recency
+- Highlight certifications specifically mentioned in the job description
+
+### Personal Projects
+- Focus on projects that demonstrate skills required in the job description
+- Include: project name, brief description, and technologies used
+- Highlight key features, challenges overcome, and technical achievements
+- Add links to GitHub, live demos, or other public repositories
+- Quantify impact or scale where possible (e.g., "Used by X users", "Processed Y data points")
 
 ### Education
 - Include institution, degree, graduation year
@@ -95,6 +122,12 @@ You will receive:
 
 ## Education
 {education}
+
+## Professional Certifications
+{certifications}
+
+## Personal Projects
+{personal_projects}
 
 --------------
 # Target Job Description

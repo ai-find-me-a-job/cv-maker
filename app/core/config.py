@@ -1,9 +1,15 @@
 from pathlib import Path
 
+from google.genai.types import EmbedContentConfig
 from pydantic import Field, RedisDsn
 from pydantic_settings import BaseSettings
 
 ROOT_DIR = Path(__file__).parent.parent.parent
+
+
+class CustomEmbedConfig(EmbedContentConfig):
+    task_type: str = "RETRIEVAL_DOCUMENT"
+    output_dimensionality: int = 768
 
 
 class Config(BaseSettings):
@@ -16,6 +22,7 @@ class Config(BaseSettings):
     gemini_model: str = "gemini-2.0-flash"
     redis_dsn: RedisDsn = "redis://localhost:6379/0"
     supported_languages: dict = {"en": "English", "pt": "Portuguese (Brazilian)"}
+    embed_config: CustomEmbedConfig = CustomEmbedConfig()
 
 
 config = Config(_env_file=ROOT_DIR / ".env", _env_file_encoding="utf-8")

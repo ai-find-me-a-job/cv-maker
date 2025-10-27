@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 from qdrant_client.models import Distance, VectorParams
 
+from app.core.config import config
 from app.core.index_manager import VectorIndexManager
 
 
@@ -13,16 +14,19 @@ async def vector_index_manager():
     vector_idx_mng = VectorIndexManager(collection_name=collection_name)
 
     # Create collection with proper vector configuration
-    # GoogleGenAIEmbedding with model "gemini-embedding-001" produces 768-dimensional vectors
-    await vector_idx_mng.qdrant_client.create_collection(
+    await vector_idx_mng.aqdrant_client.create_collection(
         collection_name=collection_name,
-        vectors_config={"text-dense": VectorParams(size=768, distance=Distance.COSINE)},
+        vectors_config={
+            "text-dense": VectorParams(
+                size=config.embed_config.output_dimensionality, distance=Distance.COSINE
+            )
+        },
     )
 
     yield vector_idx_mng
 
     # Cleanup
-    await vector_idx_mng.qdrant_client.delete_collection(collection_name)
+    await vector_idx_mng.aqdrant_client.delete_collection(collection_name)
 
 
 @pytest.mark.asyncio
@@ -34,7 +38,7 @@ async def test_add_documents(vector_index_manager: VectorIndexManager):
     added_documents = await vector_index_manager.add_documents(test_files)
     print(added_documents)
     # Verify documents were added by checking the collection info
-    collection_info = await vector_index_manager.qdrant_client.get_collection(
+    collection_info = await vector_index_manager.aqdrant_client.get_collection(
         vector_index_manager.collection_name
     )
     added_files = await vector_index_manager.get_added_files()

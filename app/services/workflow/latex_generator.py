@@ -1,11 +1,21 @@
-from .extraction_models import Resume, Experience, Education, Skills
-from typing import List
+import logging
+import subprocess
+from pathlib import Path
+from typing import List, Optional
+
 from pylatex import Document, Section
 from pylatex.package import Package
 from pylatex.utils import NoEscape
-import subprocess
-from pathlib import Path
-import logging
+
+from .extraction_models import (
+    Certification,
+    Education,
+    Experience,
+    PersonalProject,
+    ProfessionalSummary,
+    Resume,
+    Skills,
+)
 
 
 class LaTeXGenerator:
@@ -15,28 +25,38 @@ class LaTeXGenerator:
     LANGUAGE_TEXTS = {
         "en": {
             "sections": {
+                "professional_summary": "Professional Summary",
                 "experience": "Experience",
                 "skills": "Skills",
-                "education": "Education"
+                "certifications": "Professional Certifications",
+                "personal_projects": "Personal Projects",
+                "education": "Education",
             },
             "labels": {
                 "technical": "Technical:",
                 "languages": "Languages:",
-                "soft_skills": "Soft Skills:"
-            }
+                "soft_skills": "Soft Skills:",
+                "credential_id": "Credential ID:",
+                "technologies": "Technologies:",
+            },
         },
         "pt": {
             "sections": {
+                "professional_summary": "Resumo Profissional",
                 "experience": "Experiência",
                 "skills": "Habilidades",
-                "education": "Educação"
+                "certifications": "Certificados",
+                "personal_projects": "Projetos Pessoais",
+                "education": "Educação",
             },
             "labels": {
                 "technical": "Técnicas:",
                 "languages": "Idiomas:",
-                "soft_skills": "Habilidades Comportamentais:"
-            }
-        }
+                "soft_skills": "Habilidades Comportamentais:",
+                "credential_id": "ID da Credencial:",
+                "technologies": "Tecnologias:",
+            },
+        },
     }
 
     def __init__(self, language: str = "en"):
@@ -96,8 +116,22 @@ class LaTeXGenerator:
         doc = self.doc
         # Generate content
         self._generate_personal_info(doc, resume)
+
+        # Professional Summary (optional) - before experience
+        if resume.professional_summary:
+            self._generate_professional_summary(doc, resume.professional_summary)
+
         self._generate_experience(doc, resume.experience)
         self._generate_skills(doc, resume.skills)
+
+        # Certifications (optional) - after skills
+        if resume.certifications:
+            self._generate_certifications(doc, resume.certifications)
+
+        # Personal Projects (optional) - after certifications
+        if resume.personal_projects:
+            self._generate_personal_projects(doc, resume.personal_projects)
+
         self._generate_education(doc, resume.education)
 
         self.logger.info("LaTeX generation completed")
@@ -211,6 +245,90 @@ class LaTeXGenerator:
                     NoEscape(f"\\item \\textbf{{{soft_label}}} {soft_skills_str}")
                 )
             doc.append(NoEscape(r"\end{itemize}"))
+
+    def _generate_professional_summary(
+        self, doc: Document, summary: Optional[ProfessionalSummary]
+    ) -> None:
+        """Generate professional summary section."""
+        if not summary:
+            return
+
+        section_title = self.texts["sections"]["professional_summary"]
+        with doc.create(Section(section_title)):
+            doc.append(NoEscape(self._escape_latex(summary.summary)))
+            doc.append(NoEscape(r"\vspace{0.3cm}"))
+
+    def _generate_certifications(
+        self, doc: Document, certifications: Optional[List[Certification]]
+    ) -> None:
+        """Generate certifications section."""
+        if not certifications:
+            return
+
+        section_title = self.texts["sections"]["certifications"]
+        with doc.create(Section(section_title)):
+            for cert in certifications:
+                # Format title and issuer
+                title = NoEscape(
+                    f"\\textbf{{{self._escape_latex(cert.name)}}} \\hfill {self._escape_latex(cert.issuer)}"
+                )
+                doc.append(NoEscape(f"\\subsection*{{{title}}}"))
+
+                # Format dates
+                date_info = cert.date
+                if cert.expiry_date:
+                    date_info += f" - {cert.expiry_date}"
+                doc.append(NoEscape(f"\\textit{{{self._escape_latex(date_info)}}}"))
+
+                if cert.credential_id:
+                    credential_label = self.texts["labels"]["credential_id"]
+                    doc.append(
+                        NoEscape(
+                            f"{credential_label} {self._escape_latex(cert.credential_id)}"
+                        )
+                    )
+                    if cert.credential_url:
+                        doc.append(
+                            NoEscape(f" (\\href{{{cert.credential_url}}}{{Verify}})")
+                        )
+                doc.append(NoEscape(r"\vspace{0.2cm}"))
+
+    def _generate_personal_projects(
+        self, doc: Document, projects: Optional[List[PersonalProject]]
+    ) -> None:
+        """Generate personal projects section."""
+        if not projects:
+            return
+
+        section_title = self.texts["sections"]["personal_projects"]
+        with doc.create(Section(section_title)):
+            for project in projects:
+                # Project name and URL if available
+                title = self._escape_latex(project.name)
+                if project.url:
+                    title = f"\\href{{{project.url}}}{{{title}}}"
+                doc.append(NoEscape(f"\\subsection*{{\\textbf{{{title}}}}}"))
+
+                # Project description
+                doc.append(NoEscape(self._escape_latex(project.description)))
+                doc.append(NoEscape(r"\vspace{0.1cm}"))
+
+                # Technologies used
+                tech_label = self.texts["labels"]["technologies"]
+                technologies = ", ".join(project.technologies)
+                doc.append(
+                    NoEscape(
+                        f"\\textit{{{tech_label}}} {self._escape_latex(technologies)}"
+                    )
+                )
+
+                # Highlights as bullet points
+                if project.highlights:
+                    doc.append(NoEscape(r"\begin{itemize}"))
+                    for highlight in project.highlights:
+                        doc.append(NoEscape(f"\\item {self._escape_latex(highlight)}"))
+                    doc.append(NoEscape(r"\end{itemize}"))
+                doc.append(NoEscape(r"\vspace{0.2cm}"))
 
     def _generate_education(self, doc: Document, education: List[Education]) -> None:
         """Generate education section."""
