@@ -11,8 +11,6 @@ class Config(BaseSettings):
     google_api_key: str = Field(alias="GOOGLE_API_KEY")
     qdrant_key: str = Field(alias="QDRANT_KEY")
     qdrant_endpoint: str = Field(alias="QDRANT_ENDPOINT")
-    # TODO: Remove after add cloud vector store
-    storage_dir: Path = ROOT_DIR / "data" / ".storage"
     scrapping_page_content_limit: int = 15000  # characters
     gemini_temperature: float = 0.7
     gemini_model: str = "gemini-2.0-flash"
