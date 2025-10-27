@@ -1,6 +1,6 @@
 [project]
 name = "cv-maker"
-version = "0.3.0"
+version = "0.4.0"
 description = "AI Agentic Workflow to build a CV"
 readme = "README.md"
 requires-python = ">=3.12"
