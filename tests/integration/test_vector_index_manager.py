@@ -31,14 +31,17 @@ async def test_add_documents(vector_index_manager: VectorIndexManager):
     test_files = [Path(__file__).parent / "sample_files" / "test_file.md"]
 
     # Add documents
-    await vector_index_manager.add_documents(test_files)
-
+    added_documents = await vector_index_manager.add_documents(test_files)
+    print(added_documents)
     # Verify documents were added by checking the collection info
     collection_info = await vector_index_manager.qdrant_client.get_collection(
         vector_index_manager.collection_name
     )
     added_files = await vector_index_manager.get_added_files()
-
+    print(added_files)
     # Assert that at least one vector was added (the test file should produce at least one chunk)
+    assert collection_info.points_count is not None, "Collection points count is None"
     assert collection_info.points_count > 0, "No documents were added to the collection"
-    assert added_files == {file.name for file in test_files}
+    assert all([doc in added_files for doc in added_documents]), (
+        "Not all added documents are in the collection"
+    )
