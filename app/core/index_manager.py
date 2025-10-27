@@ -133,7 +133,7 @@ class VectorIndexManager:
 
         return self.index
 
-    async def delete_index(self) -> None:
+    async def delete_collection(self) -> None:
         """Delete the underlying Qdrant collection.
 
         Use this to remove all stored vectors and metadata for the configured
