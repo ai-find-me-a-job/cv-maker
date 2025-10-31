@@ -1,36 +1,49 @@
+from typing import List, Optional
+
 from pydantic import BaseModel, Field
-from typing import Optional, List
 
 
 class ProfessionalSummary(BaseModel):
     """Professional summary section."""
-    
+
     summary: str = Field(
         ...,
         description="A concise 4-5 line paragraph summarizing: field of work (e.g., Data Science, AI), "
-                   "years of experience/seniority level, main technologies, and impact/purpose."
+        "years of experience/seniority level, main technologies, and impact/purpose.",
     )
 
 
 class Certification(BaseModel):
     """Professional certification entry."""
-    
+
     name: str = Field(..., description="Name of the certification")
     issuer: str = Field(..., description="Organization that issued the certification")
     date: str = Field(..., description="Date of certification (e.g., Jan 2020)")
-    expiry_date: Optional[str] = Field(None, description="Expiration date if applicable (e.g., Dec 2025)")
-    credential_id: Optional[str] = Field(None, description="Certification credential ID if applicable")
-    credential_url: Optional[str] = Field(None, description="URL to verify the certification")
+    expiry_date: Optional[str] = Field(
+        None, description="Expiration date if applicable (e.g., Dec 2025)"
+    )
+    credential_id: Optional[str] = Field(
+        None, description="Certification credential ID if applicable"
+    )
+    credential_url: Optional[str] = Field(
+        None, description="URL to verify the certification"
+    )
 
 
 class PersonalProject(BaseModel):
     """Personal project entry."""
-    
+
     name: str = Field(..., description="Name of the project")
     description: str = Field(..., description="Brief description of the project")
-    technologies: List[str] = Field(..., description="List of technologies used in the project")
-    url: Optional[str] = Field(None, description="URL to the project (e.g., GitHub repository)")
-    highlights: List[str] = Field(..., description="Key achievements or features of the project")
+    technologies: List[str] = Field(
+        ..., description="List of technologies used in the project"
+    )
+    url: Optional[str] = Field(
+        None, description="URL to the project (e.g., GitHub repository)"
+    )
+    highlights: List[str] = Field(
+        ..., description="Key achievements or features of the project"
+    )
 
 
 class Experience(BaseModel):
@@ -115,3 +128,12 @@ class Resume(BaseModel):
         "indicate what skills you recognized as important, but you don't have experience with. Or indicate if you "
         "have any gap in your career.",
     )
+
+
+class CandidateInfo(BaseModel):
+    personal_info: str
+    skills: str
+    experiences: str
+    education: str
+    certifications: str
+    personal_projects: str

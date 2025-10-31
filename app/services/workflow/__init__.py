@@ -7,7 +7,8 @@ from app.core.config import config
 from app.core.index_manager import VectorIndexManager
 from app.core.web_scraper import scrape_job_url
 
-from .custom_events import (
+from .context import CVWorkflowState
+from .events import (
     AskForCandidateInfoEvent,
     AskForCVReviewEvent,
     CVReviewResponseEvent,
@@ -18,7 +19,7 @@ from .custom_events import (
     GeneratePDFEvent,
     GenerateResumeEvent,
 )
-from .extraction_models import Resume
+from .extraction_models import CandidateInfo, Resume
 from .latex_generator import LaTeXGenerator
 from .prompts import (
     JOB_EXTRACTION_PROMPT_TEMPLATE,
@@ -41,7 +42,7 @@ class CVWorkflow(Workflow):
 
     @step
     async def start(
-        self, ctx: Context, event: CVStartEvent
+        self, ctx: Context[CVWorkflowState], event: CVStartEvent
     ) -> ExtractJobDescriptionEvent | AskForCandidateInfoEvent:
         await ctx.store.set("language", event.language)
         if event.job_url:
@@ -54,7 +55,7 @@ class CVWorkflow(Workflow):
 
     @step
     async def extract_job_description(
-        self, ctx: Context, event: ExtractJobDescriptionEvent
+        self, ctx: Context[CVWorkflowState], event: ExtractJobDescriptionEvent
     ) -> AskForCandidateInfoEvent:
         self.logger.info(f"Extracting job description from URL: {event.job_url}")
 
@@ -89,10 +90,11 @@ class CVWorkflow(Workflow):
 
     @step
     async def ask_for_candidate_info(
-        self, ctx: Context, event: AskForCandidateInfoEvent
+        self, ctx: Context[CVWorkflowState], event: AskForCandidateInfoEvent
     ) -> GenerateResumeEvent:
         self.logger.info("Asking for candidate information to tailor the resume")
-        job_description = await ctx.store.get("job_description")
+        state = await ctx.store.get_state()
+        job_description = state.job_description
 
         query_engine = self.index.as_query_engine(
             llm=self.llm, response_mode="tree_summarize"
@@ -149,48 +151,47 @@ class CVWorkflow(Workflow):
             """
         )
         self.logger.debug(f"Extracted personal projects: {personal_projects}")
-
-        await ctx.store.set("personal_info", str(personal_info))
-        await ctx.store.set("skills", str(skills))
-        await ctx.store.set("experiences", str(experiences))
-        await ctx.store.set("education", str(education))
-        await ctx.store.set("certifications", str(certifications))
-        await ctx.store.set("personal_projects", str(personal_projects))
+        candidate_info = CandidateInfo(
+            personal_info=str(personal_info),
+            skills=str(skills),
+            experiences=str(experiences),
+            education=str(education),
+            certifications=str(certifications),
+            personal_projects=str(personal_projects),
+        )
+        await ctx.store.set("candidate_info", candidate_info)
         return GenerateResumeEvent()
 
     @step
     async def generate_resume(
-        self, ctx: Context, event: GenerateResumeEvent
+        self, ctx: Context[CVWorkflowState], event: GenerateResumeEvent
     ) -> GeneratePDFEvent:
-        job_description = await ctx.store.get("job_description")
-        personal_info = await ctx.store.get("personal_info")
-        skills = await ctx.store.get("skills")
-        experiences = await ctx.store.get("experiences")
-        education = await ctx.store.get("education")
-        certifications = await ctx.store.get("certifications")
-        personal_projects = await ctx.store.get("personal_projects")
-
+        state = await ctx.store.get_state()
+        job_description = state.job_description
+        candidate_info = state.candidate_info
+        if not candidate_info:
+            raise ValueError("Candidate information is missing.")
         self.logger.info(
             f"Starting resume generation for job: {job_description[:50]}..."
         )
-        language = await ctx.store.get("language", default="en")
+        language = state.language
 
         # Determine language instruction
         language_instruction = self.supported_languages.get(language, "English")
         prompt = RESUME_CREATION_PROMPT_TEMPLATE.format(
             language=language_instruction,
-            personal_info=personal_info,
-            skills=skills,
-            experiences=experiences,
-            education=education,
-            certifications=certifications,
-            personal_projects=personal_projects,
+            personal_info=candidate_info.personal_info,
+            skills=candidate_info.skills,
+            experiences=candidate_info.experiences,
+            education=candidate_info.education,
+            certifications=candidate_info.certifications,
+            personal_projects=candidate_info.personal_projects,
             job_description=job_description,
         )
-        feedback = await ctx.store.get("feedback", default="")
+        feedback = state.feedback
         if feedback:
             self.logger.info("Incorporating user feedback into resume generation")
-            previous_resume = await ctx.store.get("resume", default="")
+            previous_resume = state.resume
             prompt = RESUME_CREATION_PROMPT_TEMPLATE_WITH_FEEDBACK.format(
                 resume_creation_prompt=prompt,
                 feedback=feedback,
@@ -207,15 +208,16 @@ class CVWorkflow(Workflow):
         if resume_data is None:
             raise ValueError("Failed to generate resume data from LLM response")
 
-        await ctx.store.set("resume", resume_data)
+        # await ctx.store.set("resume", resume_data)
         return GeneratePDFEvent(resume=resume_data)
 
     @step
     async def generate_pdf(
-        self, ctx: Context, event: GeneratePDFEvent
+        self, ctx: Context[CVWorkflowState], event: GeneratePDFEvent
     ) -> AskForCVReviewEvent:
         self.logger.info("Starting PDF generation")
-        language = await ctx.store.get("language", default="en")
+        state = await ctx.store.get_state()
+        language = state.language
 
         # Generate timestamp for unique filename
         resume_output_path = "output/resume"
@@ -237,7 +239,7 @@ class CVWorkflow(Workflow):
 
     @step
     async def analyze_review_answer(
-        self, ctx: Context, event: CVReviewResponseEvent
+        self, ctx: Context[CVWorkflowState], event: CVReviewResponseEvent
     ) -> FinishWorkFlowEvent | GenerateResumeEvent:
         if event.approve:
             self.logger.info("CV approved by the user")
@@ -247,9 +249,14 @@ class CVWorkflow(Workflow):
             return GenerateResumeEvent()
 
     @step
-    async def stop(self, ctx: Context, event: FinishWorkFlowEvent) -> CVStopEvent:
-        resume = await ctx.store.get("resume")
-        latex_content = await ctx.store.get("latex_content")
+    async def stop(
+        self, ctx: Context[CVWorkflowState], event: FinishWorkFlowEvent
+    ) -> CVStopEvent:
+        state = await ctx.store.get_state()
+        resume = state.resume
+        latex_content = state.latex_content
+        if not resume or not latex_content:
+            raise ValueError("Resume or LaTeX content is missing.")
         return CVStopEvent(
             resume=resume,
             latex_content=latex_content,

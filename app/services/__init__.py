@@ -11,7 +11,7 @@ from app.core.index_manager import VectorIndexManager
 from app.models.cv import ContinueCVWorkflowResponse, StartCVWorkflowResponse
 
 from .workflow import CVStopEvent, CVWorkflow
-from .workflow.custom_events import AskForCVReviewEvent, CVReviewResponseEvent
+from .workflow.events import AskForCVReviewEvent, CVReviewResponseEvent
 
 
 async def start_cv_workflow(
