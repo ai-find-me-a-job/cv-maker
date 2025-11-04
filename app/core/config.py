@@ -21,6 +21,7 @@ class Config(BaseSettings):
     gemini_temperature: float = 0.7
     gemini_model: str = "gemini-2.0-flash"
     redis_dsn: RedisDsn = "redis://localhost:6379/0"
+    mongo_uri: str = Field(alias="MONGO_URI")
     supported_languages: dict = {"en": "English", "pt": "Portuguese (Brazilian)"}
     embed_config: CustomEmbedConfig = CustomEmbedConfig()
 
