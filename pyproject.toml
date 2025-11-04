@@ -20,6 +20,7 @@ dependencies = [
     "pydantic-settings>=2.11.0",
     "llama-index-vector-stores-qdrant>=0.8.6",
     "llama-index-readers-file>=0.5.4",
+    "llama-index-storage-docstore-mongodb>=0.4.1",
 ]
 
 [dependency-groups]

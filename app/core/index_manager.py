@@ -2,11 +2,9 @@ import logging as logger
 from pathlib import Path
 from typing import Sequence
 
-from llama_index.core import (
-    SimpleDirectoryReader,
-    VectorStoreIndex,
-)
+from llama_index.core import SimpleDirectoryReader, StorageContext, VectorStoreIndex
 from llama_index.embeddings.google_genai import GoogleGenAIEmbedding
+from llama_index.storage.docstore.mongodb import MongoDocumentStore
 from llama_index.vector_stores.qdrant import QdrantVectorStore
 from llama_parse import LlamaParse, ResultType
 from qdrant_client import AsyncQdrantClient, QdrantClient
@@ -24,11 +22,11 @@ class VectorIndexManager:
     payloads) and delete the underlying collection.
     """
 
-    def __init__(self, collection_name: str = "rag-files") -> None:
+    def __init__(self, vecstore_collection_name: str = "rag-files") -> None:
         """Initialize resources for the vector index.
 
         Args:
-            collection_name: Name of the Qdrant collection to use/create.
+            vecstore_collection_name: Name of the Qdrant collection to use/create.
 
         Side effects:
             - Creates an AsyncQdrantClient using credentials from `config`.
@@ -37,7 +35,7 @@ class VectorIndexManager:
               instance (async-enabled) that will be used for insert/query
               operations.
         """
-        self.collection_name = collection_name
+        self.collection_name = vecstore_collection_name
         self.embed_model = GoogleGenAIEmbedding(
             model="gemini-embedding-001",
             api_key=config.google_api_key,
@@ -51,21 +49,32 @@ class VectorIndexManager:
             url=config.qdrant_endpoint,
             api_key=config.qdrant_key,
         )
-        self._create_collection_if_not_exists()
-
+        self._create_qdrant_collection_if_not_exists()
         self.vector_store = QdrantVectorStore(
             client=self.qdrant_client,
             aclient=self.aqdrant_client,
             collection_name=self.collection_name,
         )
-        self.index = VectorStoreIndex.from_vector_store(
+        self.doc_store = MongoDocumentStore.from_uri(
+            uri=str(config.mongo_uri),
+            db_name="cv_search_storage",
+            namespace="documents",
+        )
+
+        self.storage_context = StorageContext.from_defaults(
             vector_store=self.vector_store,
+            docstore=self.doc_store,
+        )
+
+        self.index = VectorStoreIndex.from_documents(
+            documents=[],
+            storage_context=self.storage_context,
             embed_model=self.embed_model,
             use_async=True,
             store_nodes_override=True,
         )
 
-    def _create_collection_if_not_exists(self) -> None:
+    def _create_qdrant_collection_if_not_exists(self) -> None:
         if not self.qdrant_client.collection_exists(self.collection_name):
             self.qdrant_client.create_collection(
                 collection_name=self.collection_name,
