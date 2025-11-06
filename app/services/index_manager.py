@@ -5,9 +5,9 @@ from llama_index.core import (
     SimpleDirectoryReader,
     VectorStoreIndex,
 )
+from llama_index.core.base.embeddings.base import BaseEmbedding
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core.vector_stores import ExactMatchFilter, MetadataFilters
-from llama_index.embeddings.google_genai import GoogleGenAIEmbedding
 from llama_index.vector_stores.qdrant import QdrantVectorStore
 from llama_parse import LlamaParse, ResultType
 from qdrant_client import AsyncQdrantClient, QdrantClient
@@ -29,32 +29,28 @@ class VectorIndexManager:
     payloads) and delete the underlying collection.
     """
 
-    def __init__(self, vecstore_collection_name: str = "rag-files") -> None:
+    def __init__(
+        self,
+        embed_model: BaseEmbedding,
+        qdrant_clients: tuple[QdrantClient, AsyncQdrantClient],
+        vecstore_collection_name: str = "rag-files",
+    ) -> None:
         """Initialize resources for the vector index.
 
         Args:
             vecstore_collection_name: Name of the Qdrant collection to use/create.
+            embed_model: The embedding model to use for vectorizing documents.
+            qdrant_clients: A tuple containing synchronous and asynchronous Qdrant clients.
+
 
         Side effects:
-            - Creates an AsyncQdrantClient using credentials from `config`.
-            - Builds a Google embedding model instance.
             - Constructs a QdrantVectorStore wrapper and a VectorStoreIndex
               instance (async-enabled) that will be used for insert/query
               operations.
         """
         self.collection_name = vecstore_collection_name
-        self.embed_model = GoogleGenAIEmbedding(
-            model="gemini-embedding-001",
-            api_key=config.google_api_key,
-            embedding_config=config.embed_config,
-        )
-        self.aqdrant_client = AsyncQdrantClient(
-            url=config.qdrant_endpoint,
-            api_key=config.qdrant_key,
-        )
-        self.qdrant_client = QdrantClient(
-            url=config.qdrant_endpoint, api_key=config.qdrant_key
-        )
+        self.embed_model = embed_model
+        self.qdrant_client, self.aqdrant_client = qdrant_clients
         self._create_qdrant_collection_if_not_exists()
         self.vector_store = QdrantVectorStore(
             client=self.qdrant_client,
@@ -128,6 +124,7 @@ class VectorIndexManager:
         ).aload_data()
 
         nodes = await text_splitter.aget_nodes_from_documents(documents=documents)
+        # BUG: Nodes are coming with different ref_doc_id
         # Insert documents into existing index
         main_node = nodes[0]
         if not main_node.ref_doc_id:

@@ -4,18 +4,13 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
+from app.core.factories import get_vector_index_manager_service
 from app.models.index import DocumentModel
 from app.services.index_manager import VectorIndexManager
 
 logger = logging.getLogger()
 
 router = APIRouter(prefix="/cv/index", tags=["Index Management"])
-
-
-def get_vector_index_manager_service() -> VectorIndexManager:
-    # TODO: Refact vector index manager to load its dependecies in the initialization
-    # This will make easier the unit tests build
-    return VectorIndexManager()
 
 
 @router.post("/documents", response_model=DocumentModel)

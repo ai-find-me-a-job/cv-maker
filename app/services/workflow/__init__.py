@@ -1,9 +1,12 @@
 import logging
+from typing import Annotated
 
+from llama_index.core.llms.function_calling import FunctionCallingLLM
 from llama_index.core.workflow import Context, Workflow, step
-from llama_index.llms.google_genai import GoogleGenAI
+from workflows.resource import Resource
 
 from app.core.config import config
+from app.core.factories import get_llm_model, get_vector_index_manager_service
 from app.core.web_scraper import scrape_job_url
 from app.services.index_manager import VectorIndexManager
 
@@ -27,15 +30,13 @@ from .prompts import (
     RESUME_CREATION_PROMPT_TEMPLATE_WITH_FEEDBACK,
 )
 
+llm_resource = Annotated[FunctionCallingLLM, Resource(get_llm_model)]
+index_manager_resource = Annotated[
+    VectorIndexManager, Resource(get_vector_index_manager_service)
+]
+
 
 class CVWorkflow(Workflow):
-    llm = GoogleGenAI(
-        model=config.gemini_model,
-        api_key=config.google_api_key,
-        temperature=config.gemini_temperature,
-    )
-    index_manager = VectorIndexManager()
-    index = index_manager.get_index()
     logger = logging.getLogger("cv_workflow")
     scraping_page_content_limit = config.scrapping_page_content_limit
     supported_languages = config.supported_languages
@@ -55,7 +56,10 @@ class CVWorkflow(Workflow):
 
     @step
     async def extract_job_description(
-        self, ctx: Context[CVWorkflowState], event: ExtractJobDescriptionEvent
+        self,
+        ctx: Context[CVWorkflowState],
+        event: ExtractJobDescriptionEvent,
+        llm: llm_resource,
     ) -> AskForCandidateInfoEvent:
         self.logger.info(f"Extracting job description from URL: {event.job_url}")
 
@@ -78,7 +82,7 @@ class CVWorkflow(Workflow):
             page_text = page_text[: self.scraping_page_content_limit]
 
         # Use LLM to extract job description from the page content
-        job_description = await self.llm.acomplete(
+        job_description = await llm.acomplete(
             JOB_EXTRACTION_PROMPT_TEMPLATE.format(
                 page_title=page_title, page_text=page_text
             )
@@ -90,15 +94,17 @@ class CVWorkflow(Workflow):
 
     @step
     async def ask_for_candidate_info(
-        self, ctx: Context[CVWorkflowState], event: AskForCandidateInfoEvent
+        self,
+        ctx: Context[CVWorkflowState],
+        event: AskForCandidateInfoEvent,
+        index_manager: index_manager_resource,
+        llm: llm_resource,
     ) -> GenerateResumeEvent:
         self.logger.info("Asking for candidate information to tailor the resume")
         state = await ctx.store.get_state()
         job_description = state.job_description
-
-        query_engine = self.index.as_query_engine(
-            llm=self.llm, response_mode="tree_summarize"
-        )
+        index = index_manager.get_index()
+        query_engine = index.as_query_engine(llm=llm, response_mode="tree_summarize")
         personal_info = await query_engine.aquery(
             """Try to find the maximum of personal information (name, phone, email, address, LinkedIn, GitHub, portfolio)"""
         )
@@ -164,7 +170,10 @@ class CVWorkflow(Workflow):
 
     @step
     async def generate_resume(
-        self, ctx: Context[CVWorkflowState], event: GenerateResumeEvent
+        self,
+        ctx: Context[CVWorkflowState],
+        event: GenerateResumeEvent,
+        llm: llm_resource,
     ) -> GeneratePDFEvent:
         state = await ctx.store.get_state()
         job_description = state.job_description
@@ -199,7 +208,7 @@ class CVWorkflow(Workflow):
             )
 
         self.logger.info("Querying index for resume generation")
-        response = await self.llm.as_structured_llm(output_cls=Resume).acomplete(prompt)
+        response = await llm.as_structured_llm(output_cls=Resume).acomplete(prompt)
 
         self.logger.info("Resume data generated successfully")
 
