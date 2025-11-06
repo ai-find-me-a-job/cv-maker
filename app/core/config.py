@@ -1,15 +1,20 @@
 from pathlib import Path
 
 from google.genai.types import EmbedContentConfig
-from pydantic import Field, RedisDsn
+from pydantic import BaseModel, Field, RedisDsn
 from pydantic_settings import BaseSettings
 
 ROOT_DIR = Path(__file__).parent.parent.parent
 
 
 class CustomEmbedConfig(EmbedContentConfig):
-    task_type: str = "RETRIEVAL_DOCUMENT"
+    task_type: str = "RETRIEVAL_QUERY"
     output_dimensionality: int = 768
+
+
+class TextSplitterConfig(BaseModel):
+    chunk_size: int = 1024
+    chunk_overlap: int = 200
 
 
 class Config(BaseSettings):
@@ -24,6 +29,7 @@ class Config(BaseSettings):
     mongo_uri: str = Field(alias="MONGO_URI")
     supported_languages: dict = {"en": "English", "pt": "Portuguese (Brazilian)"}
     embed_config: CustomEmbedConfig = CustomEmbedConfig()
+    text_splitter_config: TextSplitterConfig = TextSplitterConfig()
 
 
 config = Config(_env_file=ROOT_DIR / ".env", _env_file_encoding="utf-8")

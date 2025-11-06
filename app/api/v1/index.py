@@ -2,22 +2,27 @@ import logging
 import tempfile
 from pathlib import Path
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
-from app.models.index import AddedFilesResponse
-from app.services import (
-    add_files_to_index,
-    delete_vector_index_collection,
-    get_files_in_index,
-)
+from app.models.index import DocumentModel
+from app.services.index_manager import VectorIndexManager
 
 logger = logging.getLogger()
 
 router = APIRouter(prefix="/cv/index", tags=["Index Management"])
 
 
-@router.post("/files", response_model=AddedFilesResponse)
-async def add_files_to_vector_index(files: list[UploadFile] = File(...)):
+def get_vector_index_manager_service() -> VectorIndexManager:
+    # TODO: Refact vector index manager to load its dependecies in the initialization
+    # This will make easier the unit tests build
+    return VectorIndexManager()
+
+
+@router.post("/documents", response_model=DocumentModel)
+async def add_file_to_index(
+    file: UploadFile = File(...),
+    index_manager: VectorIndexManager = Depends(get_vector_index_manager_service),
+):
     """
     Add uploaded files to the vector index for CV generation.
 
@@ -27,44 +32,32 @@ async def add_files_to_vector_index(files: list[UploadFile] = File(...)):
     Supported file types: PDF, DOCX, TXT, and other document formats
     supported by the document index.
     """
-    temp_files = []
     added_files = []
 
     try:
         # Save uploaded files as temporary files
-        for file in files:
-            with tempfile.NamedTemporaryFile(
-                delete=False, suffix=f"_{file.filename}"
-            ) as temp_file:
-                content = await file.read()
-                temp_file.write(content)
-                temp_file_path = Path(temp_file.name)
-                temp_files.append(temp_file_path)
-                logger.info(f"Saved temporary file: {temp_file_path}")
+        with tempfile.NamedTemporaryFile(
+            delete=False, suffix=f"_{file.filename}", delete_on_close=True
+        ) as temp_file:
+            content = await file.read()
+            temp_file.write(content)
+            temp_file_path = Path(temp_file.name)
+            logger.info(f"Saved temporary file: {temp_file_path}")
+            # Add files to index
+            logger.info(f"Adding {temp_file_path} files to vector index")
+            added_files = await index_manager.add_document(temp_file_path)
 
-        # Add files to index
-        logger.info(f"Adding {len(temp_files)} files to vector index")
-        added_files = await add_files_to_index(temp_files)
-
-        return AddedFilesResponse(added_files=added_files)
+        return added_files
 
     except Exception as e:
         logger.error(f"Error adding files to index: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to add files: {str(e)}")
 
-    finally:
-        # Clean up temporary files
-        for temp_file in temp_files:
-            try:
-                if temp_file.exists():
-                    temp_file.unlink()
-                    logger.debug(f"Removed temporary file: {temp_file}")
-            except Exception as e:
-                logger.warning(f"Failed to remove temporary file {temp_file}: {e}")
 
-
-@router.get("/files", response_model=AddedFilesResponse)
-async def get_files():
+@router.get("/documents", response_model=list[DocumentModel])
+async def get_all_documents(
+    index_manager: VectorIndexManager = Depends(get_vector_index_manager_service),
+):
     """
     Retrieve a list of files currently stored in the vector index.
 
@@ -72,8 +65,8 @@ async def get_files():
         List of file names or paths in the index.
     """
     try:
-        files_in_index = await get_files_in_index()
-        return AddedFilesResponse(added_files=files_in_index)
+        all_docs = await index_manager.get_all_documents()
+        return all_docs
     except Exception as e:
         logger.error(f"Error retrieving files from index: {e}")
         raise HTTPException(
@@ -81,18 +74,65 @@ async def get_files():
         )
 
 
-@router.delete("/collection", status_code=204)
-async def delete_collection():
+@router.get("/documents/{ref_doc_id}", response_model=DocumentModel)
+async def get_document_by_id(
+    ref_doc_id: str,
+    index_manager: VectorIndexManager = Depends(get_vector_index_manager_service),
+):
     """
-    Delete the entire vector index collection.
+    Retrieve a document from the vector index by its ID.
+
+    Args:
+        ref_doc_id (str): The ID of the document to retrieve.
+    """
+    try:
+        document = await index_manager.get_document(ref_doc_id)
+        return document
+    except KeyError as e:
+        logger.error(f"Document not found: {e}")
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error retrieving document: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to retrieve document: {str(e)}"
+        )
+
+
+@router.delete("/documents", status_code=204)
+async def delete_all_documents(
+    index_manager: VectorIndexManager = Depends(get_vector_index_manager_service),
+):
+    """
+    Delete all documents.
 
     This endpoint removes all data from the vector index.
     Use with caution as this action is irreversible.
     """
     try:
-        await delete_vector_index_collection()
+        await index_manager.delete_all_documents()
     except Exception as e:
         logger.error(f"Error deleting vector index collection: {e}")
         raise HTTPException(
             status_code=500, detail=f"Failed to delete collection: {str(e)}"
+        )
+
+
+@router.delete("/documents/{ref_doc_id}", status_code=204)
+async def delete_document(
+    ref_doc_id: str,
+    index_manager: VectorIndexManager = Depends(get_vector_index_manager_service),
+):
+    """
+    Delete a specific document from the vector index.
+
+    Args:
+        doc_id (str): The ID of the document to delete.
+    """
+    try:
+        # await index_manager.delete_document(doc_id)
+        await index_manager.delete_document(ref_doc_id=ref_doc_id)
+    except Exception as e:
+        logger.error(f"Error deleting document: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to delete document: {str(e)}"
         )

@@ -4,8 +4,8 @@ from llama_index.core.workflow import Context, Workflow, step
 from llama_index.llms.google_genai import GoogleGenAI
 
 from app.core.config import config
-from app.core.index_manager import VectorIndexManager
 from app.core.web_scraper import scrape_job_url
+from app.services.index_manager import VectorIndexManager
 
 from .context import CVWorkflowState
 from .events import (

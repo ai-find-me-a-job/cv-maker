@@ -8,7 +8,6 @@ from redis.asyncio import Redis
 
 from app.core.config import config
 from app.core.exceptions import StorageError, WorkFlowError
-from app.core.index_manager import VectorIndexManager
 from app.models.cv import (
     ContinueCVWorkflowRequest,
     ContinueCVWorkflowResponse,

@@ -1,9 +1,13 @@
+from datetime import date
+
 from pydantic import BaseModel
 
 
-class AddFilesRequest(BaseModel):
-    file_paths: list[str]
-
-
-class AddedFilesResponse(BaseModel):
-    added_files: list[str]
+class DocumentModel(BaseModel):
+    ref_doc_id: str
+    file_name: str
+    file_type: str
+    file_size: int
+    creation_date: date
+    last_modified_date: date
+    node_ids: list[str]
