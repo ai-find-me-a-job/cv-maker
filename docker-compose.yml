@@ -13,6 +13,7 @@ services:
       - redis_dsn=${redis_dsn:-redis://redis:6379/0}
       - QDRANT_KEY=${QDRANT_KEY}
       - QDRANT_ENDPOINT=${QDRANT_ENDPOINT}
+      - MONGO_URI=${MONGO_URI}
     volumes:
       # Mount data directories as volumes for persistence
       - ./output:/app/output
